@@ -1,0 +1,10 @@
+CUDA_VISIBLE_DEVICES=3 python main.py --model maskedsr --patch_size 96 --save 20200617_maskedsr_baseline_x3_s10_w20 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
+#CUDA_VISIBLE_DEVICES=2 python main.py --model adaedsr --patch_size 96 --save 20200612_adaedsr_baseline_x4_s100 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300 --loss 1*L1
+#CUDA_VISIBLE_DEVICES=0 python main.py --model adaedsr --patch_size 96 --save 20200613_adaedsr_baseline_x2 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300 --loss 1*L1 --pre_train result/20200612_adaedsr_baseline_x2_s100/model/model_latest.pt
+#CUDA_VISIBLE_DEVICES=0 python main.py --model maskedsr --patch_size 96 --save 20200604_maskedsr_baseline_x2_s70_w01 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
+#CUDA_VISIBLE_DEVICES=0 python main.py --model maskedsr --patch_size 96 --save 20200604_maskedsr_baseline_x2_s70_w01 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
+#CUDA_VISIBLE_DEVICES=0 python main.py --model maskedsr --patch_size 96 --save 20200604_maskedsr_baseline_x2_s70_w01 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
+#CUDA_VISIBLE_DEVICES=3 python main.py --model maskedsr --patch_size 96 --save 20200602_maskedsr_baseline_x2_s50_w10_pre --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300 --pre_train result/20200601_edsr_baseline_x2/model/model_latest.pt
+#CUDA_VISIBLE_DEVICES=2 python main.py --model maskedsr --patch_size 96 --save 20200602_maskedsr_baseline_x2_s50_w10 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
+#CUDA_VISIBLE_DEVICES=2 python main.py --model maskedsr --patch_size 96 --save 20200602_maskedsr_baseline_x2_s50_w10 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
+#CUDA_VISIBLE_DEVICES=2 python main.py --model maskedsr --patch_size 96 --save 20200602_maskedsr_baseline_x2_s50_w10 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300

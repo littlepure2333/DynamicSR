@@ -1,0 +1,2 @@
+mkdir cache/
+mkdir result/
