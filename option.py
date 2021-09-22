@@ -175,6 +175,9 @@ parser.add_argument("--base_prob", type=float, default=0.3,
 parser.add_argument("--sec_method", type=str, default="mean", 
                     help="method to shrink examples (default: mean)")
 
+# dynamic SR
+parser.add_argument("--dynamic", action="store_true", default=False, 
+                    help="use dynamic SR")
 
 args = parser.parse_args()
 template.set_template(args)

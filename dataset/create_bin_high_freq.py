@@ -18,7 +18,7 @@ os.sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from data.utils_image import rgb2ycbcr
 import time
 import cv2
-from numba import jit
+# from numba import jit
 
 def is_bin_file(filename, scale):
     return any(filename.endswith(ext) for ext in ['x{}.pt'.format(scale)])
@@ -58,7 +58,7 @@ def box_filter(imSrc, patch_size):
 # @jit(nopython=True)
 def value_sort(value_map, iy, ix):
     index_value = np.hstack((iy, ix, value_map.reshape(-1,1)))
-    sort_index = np.argsort(index_value[:,-1])
+    sort_index = np.argsort(-index_value[:,-1])
     index_value = index_value[sort_index]
     return index_value
 
@@ -67,8 +67,7 @@ if __name__ == '__main__':
     eps = 1e-9
     rgb_range = 255
     scale = 2
-    lr_dir = '/data/shizun/dataset/DIV2K/bin/DIV2K_train_LR_bicubic/X{}/'.format(scale)
-    hr_dir = '/data/shizun/dataset/DIV2K/bin/DIV2K_train_HR/'
+    lr_dir = '/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X{}/'.format(scale)
     hr_patch_size = 192 # the size is for hr patch
     # filter = 'Canny'
     # filter = 'Sobel'
@@ -76,6 +75,7 @@ if __name__ == '__main__':
     #################
 
     lr_patch_size = hr_patch_size // scale
+    print("lr patch size:{}".format(lr_patch_size))
     all_files = os.listdir(lr_dir)
     files = []
     for f in all_files:
@@ -84,11 +84,12 @@ if __name__ == '__main__':
     files.sort()
     print('number of files:', len(files))
     t0 = time.time()
-    for i, file in enumerate(files):
+    pbar = tqdm(files)
+    for i, file in enumerate(pbar):
         # if i > 2: break
         # if i < 10: continue
 
-        print("[{}/{}] processing [{}]...".format(i, len(files), file))
+        # print("[{}/{}] processing [{}]...".format(i, len(files), file))
         t1 = time.time()
 
         # get lr
@@ -97,7 +98,8 @@ if __name__ == '__main__':
             lr = pickle.load(_f) # (W,H,3)
             lr_gray = cv2.cvtColor(lr,cv2.COLOR_RGB2GRAY)
 
-        print("lr shape:{}".format(lr.shape))
+        pbar.set_description("Processing [{}] shape:{}".format(file,lr.shape))
+        # print("lr shape:{}".format(lr.shape))
 
         if filter == 'Canny':
             lr_filtered = cv2.Canny(lr_gray, 100, 150)
@@ -114,6 +116,7 @@ if __name__ == '__main__':
             lr_filtered = cv2.convertScaleAbs(gray_lap)
 
         # box filtering
+        lr_filtered = lr_filtered.astype(np.int32)
         lr_filtered_map = box_filter(lr_filtered, lr_patch_size)
 
         [hei, wid] = lr_filtered_map.shape
@@ -127,11 +130,11 @@ if __name__ == '__main__':
 
         # save patch index sorted by psnr
         save_file = lr_file.replace(".pt","_{}_p{}.pt".format(filter, hr_patch_size))
-        print("saving {}".format(save_file))
+        # print("saving {}".format(save_file))
         with open(save_file, 'wb') as _f:
             pickle.dump(index_value, _f)
         t5 = time.time()
         
         tt = t5 - t1
-        print("process time: {:.5f}".format(tt))
-    print("total time: {:.5f}".format(t5-t0))
+        # print("process time: {:.5f}".format(tt))
+    print("total time: {:.5f} s".format(t5-t0))

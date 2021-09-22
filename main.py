@@ -8,7 +8,10 @@ from option import args
 # if args.assistant:
 #     from trainer_autoassist import Trainer
 # else:
-from trainer import Trainer
+if args.dynamic:
+    from trainer_dynamic import Trainer
+else:
+    from trainer import Trainer
 import os
 # if torch.cuda.is_available():
 os.environ["CUDA_VISIBLE_DEVICES"] = args.device

@@ -161,6 +161,20 @@ class checkpoint():
                 tensor_cpu = normalized.byte().permute(1, 2, 0).cpu()
                 self.queue.put(('{}{}.png'.format(filename, p), tensor_cpu))
 
+    def save_results_dynamic(self, dataset, filename, save_dict, scale):
+        if self.args.save_results:
+            filename = self.get_path(
+                'results-{}'.format(dataset.dataset.name),
+                '{}_x{}_'.format(filename, scale)
+            )
+
+            # postfix = ('SR', 'LR', 'HR')
+            # for v, p in zip(save_list, postfix):
+            for key, value in save_dict.items():
+                normalized = value[0].mul(255 / self.args.rgb_range)
+                tensor_cpu = normalized.byte().permute(1, 2, 0).cpu()
+                self.queue.put(('{}{}.png'.format(filename, key), tensor_cpu))
+
 def quantize(img, rgb_range):
     pixel_range = 255 / rgb_range
     return img.mul(pixel_range).clamp(0, 255).round().div(pixel_range)

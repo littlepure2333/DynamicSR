@@ -1,8 +1,9 @@
 machine  = {"A3":"/data/shizun/dataset/", 
             "B3":"/data/shizun/dataset/", 
             "C4":"/data/shizun/dataset/",
-            "4gpu-4":"/home/shizun/datasets/image_process/"}
-dir_data = machine["4gpu-4"]
+            "4gpu-2":"/home/shizun/datasets/image_process/",
+            "4gpu-5":"/data/shizun/"}
+dir_data = machine["4gpu-5"]
 
 import datetime
 today = datetime.datetime.now().strftime('%Y%m%d')
@@ -228,26 +229,53 @@ def set_template(args):
         args.file_suffix = "_psnr_up_new.pt"
 
     if args.template.find('EDSR_dynamic') >= 0:
-        args.model = 'EDSR'
-        args.lr = 1e-5
-        args.n_resblocks = 24
-        args.n_feats = 224
-        args.res_scale = 1
+        args.model = 'EDSR_dynamic'
+        args.lr = 1e-4
+        args.n_resblocks = 32
+        args.n_feats = 256
+        args.res_scale = 0.1
         args.patch_size = 192
         args.dir_data = dir_data
-        args.scale = "4" #
-        args.save = "20210315_edsr_x4_r24_f224_lr1e-5_dynamic_1e-6~0.3"
-        args.device = "0,1"
+        args.scale = "2"
+        args.device = "2,3"
         args.n_GPUs = 2
-        args.batch_size = 32
-        args.print_every = 4
+        args.batch_size = 16
+        args.print_every = 10
         args.ext = "sep"
         args.reset = True
-        args.data_train = 'DIV2K_PSNR'
-        args.data_test = 'DIV2K'
-        args.data_partion = 1e-6
-        args.final_data_partion = 0.3
-        args.file_suffix = "_psnr_up_new.pt" #
+        args.save_results = 'True'
+        args.save_gt = True
+        args.dynamic = True
+        # args.save = "20210317_edsr_x4_r24_f224_lr1e-5_cutblur0.5_inferenece"
+        args.save = "{}_{}_dynamic_x{}_ps{}_lr{}".format(today, args.model, args.scale, args.patch_size, args.lr)
+
+        ### inference all images and save results
+        # args.cutblur = 0
+        # args.data_test = 'Set5+Set14+B100+Urban100'
+        # args.test_only = 'True'
+        # args.save_results = 'True'
+        # args.data_range = '1-10/11-12'
+        # args.model = 'EDSR'
+        # args.lr = 1e-5
+        # args.n_resblocks = 24
+        # args.n_feats = 224
+        # args.res_scale = 1
+        # args.patch_size = 192
+        # args.dir_data = dir_data
+        # args.scale = "4" #
+        # args.save = "20210315_edsr_x4_r24_f224_lr1e-5_dynamic_1e-6~0.3"
+        # args.device = "0,1"
+        # args.n_GPUs = 2
+        # args.batch_size = 32
+        # args.print_every = 4
+        # args.ext = "sep"
+        # args.reset = True
+        # args.data_train = 'DIV2K_PSNR'
+        # args.data_test = 'DIV2K'
+        # args.data_partion = 1e-6
+        # args.final_data_partion = 0.3
+        # args.file_suffix = "_psnr_up_new.pt" #
+        
 
     if args.template.find('EDSR_32') >= 0:
         args.model = 'EDSR'
