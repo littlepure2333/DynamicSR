@@ -10,7 +10,7 @@ import torch
 import torch.nn.utils as utils
 from tqdm import tqdm
 from model.patchnet import PatchNet
-import lpips
+# import lpips
 
 from data.utils_image import calculate_ssim
 
@@ -19,10 +19,10 @@ class Trainer():
         self.args = args
         self.scale = args.scale
         self.ssim = args.ssim
-        self.lpips_alex = args.lpips_alex
-        self.lpips_vgg = args.lpips_vgg
-        self.loss_fn_alex = lpips.LPIPS(net='alex')
-        self.loss_fn_vgg = lpips.LPIPS(net='vgg')
+        # self.lpips_alex = args.lpips_alex
+        # self.lpips_vgg = args.lpips_vgg
+        # self.loss_fn_alex = lpips.LPIPS(net='alex')
+        # self.loss_fn_vgg = lpips.LPIPS(net='vgg')
 
         self.ckp = ckp
         self.loader_train = loader.loader_train
@@ -69,8 +69,19 @@ class Trainer():
             self.optimizer.zero_grad()
             sr = self.model(lr, 0)
             loss = 0
-            for sr_i in sr:
-                loss += self.loss(sr_i, hr)
+            # distill mode
+            for i in range(len(sr) - 1):
+                loss += self.loss(sr[i],sr[-1])
+            loss += self.loss(sr[-1], hr)
+
+            # increase mode
+            # for i, sr_i in enumerate(sr):
+            #     loss += self.loss(sr_i, hr) * (i+1)
+
+            # sum mode
+            # for i, sr_i in enumerate(sr):
+            #     loss += self.loss(sr_i, hr)
+
             loss.backward()
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
@@ -111,8 +122,8 @@ class Trainer():
             for idx_scale, scale in enumerate(self.scale):
                 d.dataset.set_scale(idx_scale)
                 ssim_total = 0
-                lpips_vgg_total = 0
-                lpips_alex_total = 0
+                # lpips_vgg_total = 0
+                # lpips_alex_total = 0
                 save_dict = {}
 
                 for lr, hr, filename in tqdm(d, ncols=80):
@@ -130,14 +141,14 @@ class Trainer():
                         hr_np = hr.squeeze().cpu().permute(1,2,0).numpy()
                         ssim = calculate_ssim(sr_i_np, hr_np)
                         ssim_total += ssim
-                    if self.lpips_vgg:
+                    # if self.lpips_vgg:
                         #print('sr',torch.reshape(torch.Tensor(sr),(1,c,h,w)).size())
                         #print('hr',torch.reshape(torch.Tensor(hr),(1,c,h,w)).size())
-                        lpips_vgg = self.loss_fn_vgg(torch.reshape(torch.Tensor(sr_i),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
-                        lpips_vgg_total += lpips_vgg
-                    if self.lpips_alex:
-                        lpips_alex = self.loss_fn_alex(torch.reshape(torch.Tensor(sr_i),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
-                        lpips_alex_total += lpips_alex
+                    #     lpips_vgg = self.loss_fn_vgg(torch.reshape(torch.Tensor(sr_i),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
+                    #     lpips_vgg_total += lpips_vgg
+                    # if self.lpips_alex:
+                    #     lpips_alex = self.loss_fn_alex(torch.reshape(torch.Tensor(sr_i),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
+                    #     lpips_alex_total += lpips_alex
                         #print('alex',lpips_alex_total[0][0][0][0]/len(d),type(lpips_alex_total))
                     if self.args.save_gt:
                         save_dict['LR'] = lr
@@ -178,22 +189,22 @@ class Trainer():
                             ssim_total/len(d)
                         )
                     )
-                if self.lpips_vgg:
-                     self.ckp.write_log(
-                        '[{} x{}]\tLPIPS-vgg: {:.4f}'.format(
-                            d.dataset.name,
-                            scale,
-                            lpips_vgg_total[0][0][0][0]/len(d)
-                        )
-                    )
-                if self.lpips_alex:
-                     self.ckp.write_log(
-                        '[{} x{}]\tLPIPS-alex: {:.4f}'.format(
-                            d.dataset.name,
-                            scale,
-                            lpips_alex_total[0][0][0][0]/len(d)
-                        )
-                    )
+                # if self.lpips_vgg:
+                #      self.ckp.write_log(
+                #         '[{} x{}]\tLPIPS-vgg: {:.4f}'.format(
+                #             d.dataset.name,
+                #             scale,
+                #             lpips_vgg_total[0][0][0][0]/len(d)
+                #         )
+                #     )
+                # if self.lpips_alex:
+                #      self.ckp.write_log(
+                #         '[{} x{}]\tLPIPS-alex: {:.4f}'.format(
+                #             d.dataset.name,
+                #             scale,
+                #             lpips_alex_total[0][0][0][0]/len(d)
+                #         )
+                #     )
 
         self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
         self.ckp.write_log('Saving...')
