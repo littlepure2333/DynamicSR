@@ -71,7 +71,7 @@ class Trainer():
             loss = 0
             # distill mode
             for i in range(len(sr) - 1):
-                loss += self.loss(sr[i],sr[-1])
+                loss += self.loss(sr[i],sr[-1].detach())
             loss += self.loss(sr[-1], hr)
 
             # increase mode
