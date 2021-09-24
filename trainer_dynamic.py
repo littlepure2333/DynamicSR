@@ -70,19 +70,44 @@ class Trainer():
             sr = self.model(lr, 0)
             loss = 0
             # distill mode
-            for i in range(len(sr) - 1):
-                loss += self.loss(sr[i],sr[-1].detach())
-            loss += self.loss(sr[-1], hr)
+            # for i in range(len(sr) - 1):
+            #     loss += self.loss(sr[i],sr[-1].detach())
+            # loss += self.loss(sr[-1], hr)
+            # loss.backward()
+
+            # increase distill mode
+            # for i in range(len(sr) - 1):
+            #     loss += self.loss(sr[i],sr[-1].detach()) * (i+1)
+            # loss += self.loss(sr[-1], hr) * len(sr)
+            # loss.backward()
+
+            # post distill mode
+            # sr_last_detach = sr[-1].detach()
+            # loss = self.loss(sr[-1], hr)
+            # loss.backward()
+            # for i in reversed(range(len(sr) - 1)):
+            #     sr = self.model(lr, 0)
+            #     loss = self.loss(sr[i],sr_last_detach)
+            #     loss.backward()
 
             # increase mode
             # for i, sr_i in enumerate(sr):
             #     loss += self.loss(sr_i, hr) * (i+1)
+            # loss.backward()
 
             # sum mode
             # for i, sr_i in enumerate(sr):
             #     loss += self.loss(sr_i, hr)
+            # loss.backward()
 
+            # forward every mode
+            loss = self.loss(sr[0], hr)
             loss.backward()
+            for i in range(1, len(sr)):
+                sr = self.model(lr, 0)
+                loss = self.loss(sr[i], hr)
+            loss.backward()
+
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
                     self.model.parameters(),
