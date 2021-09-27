@@ -1,3 +1,4 @@
+from numpy import index_exp
 import torch
 
 import utility
@@ -10,6 +11,8 @@ from option import args
 # else:
 if args.dynamic:
     from trainer_dynamic import Trainer
+if args.switchable:
+    from trainer_switchable import Trainer
 else:
     from trainer import Trainer
 import os
@@ -27,7 +30,13 @@ def main():
         t.test()
     else:
         if checkpoint.ok:
-            loader = data.Data(args)
+            if args.switchable:
+                loader = []
+                for part in args.data_part_list:
+                    args.file_suffix = part
+                    loader.append(data.Data(args))
+            else:
+                loader = data.Data(args)
             _model = model.Model(args, checkpoint)
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
             utility.print_params(_model,checkpoint,args)

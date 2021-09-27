@@ -2,11 +2,12 @@ import os
 import random
 import pickle
 import imageio
+from tqdm.std import trange
 from data import srdata
 from data import common
 from augments import cutblur
 
-class DIV2K_PSNR(srdata.SRData):
+class DIV2K_SWITCHABLE(srdata.SRData):
     def __init__(self, args, name='DIV2K', train=True, benchmark=False):
         data_range = [r.split('-') for r in args.data_range.split('/')]
         if train:
@@ -21,13 +22,21 @@ class DIV2K_PSNR(srdata.SRData):
         self.data_partion = args.data_partion
         self.file_suffix = args.file_suffix
         self.cutblur = args.cutblur
-        super(DIV2K_PSNR, self).__init__(
+        super(DIV2K_SWITCHABLE, self).__init__(
             args, name=name, train=train, benchmark=benchmark
         )
+        if train:
+            self.file_list = os.path.join(self.dir_lr_bin, "{}_train.pt".format(self.file_suffix))
+        else:
+            self.file_list = os.path.join(self.dir_lr_bin, "{}_val.pt".format(self.file_suffix))
+
+        with open(self.file_list, 'rb') as _f:
+            self.img_iy_ix_list = pickle.load(_f)
+
     
     def __getitem__(self, idx):
-        lr, hr, filename, psnr_index = self._load_file(idx)
-        pair = self.get_patch(lr, hr, psnr_index)
+        lr, hr, filename, iy, ix = self._load_file(idx)
+        pair = self.get_patch(lr, hr, iy, ix)
         pair = common.set_channel(*pair, n_channels=self.args.n_colors)
         pair_t = common.np2Tensor(*pair, rgb_range=self.args.rgb_range)
         
@@ -47,11 +56,11 @@ class DIV2K_PSNR(srdata.SRData):
 
     def _load_file(self, idx):
         idx = self._get_index(idx)
-        f_hr = self.images_hr[idx]
-        f_lr = self.images_lr[self.idx_scale][idx]
-        f_psnr = f_lr.replace('.pt', self.file_suffix)
+        img, iy, ix = self.img_iy_ix_list[idx]
+        filename = str(img).rjust(4,'0')
+        f_hr = os.path.join(self.dir_hr_bin, '{}.pt'.format(filename))
+        f_lr = os.path.join(self.dir_lr_bin, '{}x{}.pt'.format(filename, self.scale[0]))
 
-        filename, _ = os.path.splitext(os.path.basename(f_hr))
         if self.args.ext == 'img' or self.benchmark:
             hr = imageio.imread(f_hr)
             lr = imageio.imread(f_lr)
@@ -60,16 +69,13 @@ class DIV2K_PSNR(srdata.SRData):
                 hr = pickle.load(_f)
             with open(f_lr, 'rb') as _f:
                 lr = pickle.load(_f)
-            with open(f_psnr, 'rb') as _f:
-                psnr_index = pickle.load(_f)
 
-        return lr, hr, filename, psnr_index
+        return lr, hr, filename, int(iy), int(ix)
 
-    def get_patch(self, lr, hr, psnr_index):
+    def get_patch(self, lr, hr, iy, ix):
         ########################
-        def _get_patch(*args, psnr_index, data_partion=0.7, patch_size=96, scale=2, multi=False, input_large=False):
+        def _get_patch(*args, iy, ix, data_partion=0.7, patch_size=96, scale=2, multi=False, input_large=False):
             # ih, iw = args[0].shape[:2]
-            n_patch = int(psnr_index.shape[0] * data_partion)
 
             if not input_large:
                 p = scale if multi else 1
@@ -78,15 +84,6 @@ class DIV2K_PSNR(srdata.SRData):
             else:
                 tp = patch_size
                 ip = patch_size
-                
-            if n_patch == 0:
-                index = 0
-            elif n_patch > 0:    # positive order
-                index = random.randrange(0, n_patch)
-            else: # n_patch < 0: # reverse order
-                index = random.randrange(n_patch, 0)    
-            iy = int(psnr_index[index][0])
-            ix = int(psnr_index[index][1])
 
             if not input_large:
                 tx, ty = scale * ix, scale * iy
@@ -104,7 +101,7 @@ class DIV2K_PSNR(srdata.SRData):
         if self.train:
             lr, hr = _get_patch(
                 lr, hr, 
-                psnr_index=psnr_index,
+                iy=iy, ix=ix,
                 data_partion=self.data_partion,
                 patch_size=self.args.patch_size,
                 scale=scale,
@@ -120,18 +117,29 @@ class DIV2K_PSNR(srdata.SRData):
         return lr, hr
 
     def _scan(self):
-        names_hr, names_lr = super(DIV2K_PSNR, self)._scan()
+        names_hr, names_lr = super(DIV2K_SWITCHABLE, self)._scan()
         names_hr = names_hr[self.begin - 1:self.end]
         names_lr = [n[self.begin - 1:self.end] for n in names_lr]
 
         return names_hr, names_lr
 
     def _set_filesystem(self, dir_data):
-        super(DIV2K_PSNR, self)._set_filesystem(dir_data)
+        self.apath = os.path.join(dir_data, self.name)
         self.dir_hr = os.path.join(self.apath, 'DIV2K_train_HR')
         self.dir_lr = os.path.join(self.apath, 'DIV2K_train_LR_bicubic')
-        if self.input_large: self.dir_lr += 'L'
+        self.dir_hr_bin = os.path.join(self.apath, 'bin', 'DIV2K_train_HR')
+        self.dir_lr_bin = os.path.join(self.apath, 'bin', 'DIV2K_train_LR_bicubic', 'X{}'.format(self.scale[0]))
+        self.ext = ('.png', '.png')
 
     def set_data_partion(self, value):
         assert(0 <= value <= 1)
         self.data_partion = value
+
+    def __len__(self):
+        return len(self.images_hr)
+
+    def _get_index(self, idx):
+        if self.train:
+            return idx % len(self.images_hr)
+        else:
+            return idx

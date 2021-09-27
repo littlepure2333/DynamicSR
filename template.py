@@ -237,7 +237,7 @@ def set_template(args):
         args.patch_size = 192
         args.dir_data = dir_data
         args.scale = "2"
-        args.device = "2,3"
+        args.device = "0,1"
         args.n_GPUs = 2
         args.batch_size = 16
         args.print_every = 10
@@ -247,7 +247,7 @@ def set_template(args):
         args.save_gt = True
         args.dynamic = True
         # args.save = "20210317_edsr_x4_r24_f224_lr1e-5_cutblur0.5_inferenece"
-        args.save = "{}_{}_dynamic_x{}_ps{}_lr{}".format(today, args.model, args.scale, args.patch_size, args.lr)
+        args.save = "{}_{}_forward_every_x{}_ps{}_lr{}".format(today, args.model, args.scale, args.patch_size, args.lr)
 
         ### inference all images and save results
         # args.cutblur = 0
@@ -276,6 +276,31 @@ def set_template(args):
         # args.final_data_partion = 0.3
         # args.file_suffix = "_psnr_up_new.pt" #
         
+
+    if args.template.find('EDSR_switchable') >= 0:
+        args.model = 'EDSR_switchable'
+        args.lr = 1e-4
+        args.n_resblocks = 32
+        args.n_feats = 256
+        args.res_scale = 0.1
+        args.patch_size = 192
+        args.epochs = 300
+        args.dir_data = dir_data
+        args.scale = "2"
+        args.device = "3"
+        args.n_GPUs = 1
+        args.batch_size = 16
+        args.print_every = 10
+        args.ext = "sep"
+        args.reset = True
+        args.save_results = 'True'
+        args.save_gt = True
+        args.data_train = 'DIV2K_SWITCHABLE'
+        args.data_test = 'DIV2K'
+        args.switchable = True
+        args.data_part_list = ('easy_x2_descending', 'midd_x2_descending', 'hard_x2_descending')
+        args.width_mult_list = (0.33, 0.67, 1.0)
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_recurrent_easier".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
 
     if args.template.find('EDSR_32') >= 0:
         args.model = 'EDSR'

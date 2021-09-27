@@ -2,7 +2,7 @@ import torch.nn as nn
 from option import args
 width_mult = args.width_mult_list[-1]
 
-def make_divisible(v, divisor=8, min_value=1):
+def make_divisible(v, divisor=4, min_value=1):
     """
     forked from slim:
     https://github.com/tensorflow/models/blob/\
@@ -37,8 +37,8 @@ class USConv2d(nn.Conv2d):
         groups = in_channels_max if depthwise else 1
         super(USConv2d, self).__init__(
             in_channels_max, out_channels_max,
-            kernel_size, stride=stride, padding=padding, dilation=dilation,
-            groups=groups, bias=bias)
+            kernel_size, stride=stride, padding=(kernel_size//2), 
+            dilation=dilation, groups=groups, bias=bias)
         self.depthwise = depthwise
         self.in_channels_basic = in_channels
         self.out_channels_basic = out_channels
@@ -118,7 +118,7 @@ class USBatchNorm2d(nn.BatchNorm2d):
              for i in [
                      int(make_divisible(
                          num_features * width_mult / ratio) * ratio)
-                     for width_mult in FLAGS.width_mult_list]
+                     for width_mult in args.width_mult_list]
              ]
         )
         self.ratio = ratio
@@ -130,8 +130,8 @@ class USBatchNorm2d(nn.BatchNorm2d):
         bias = self.bias
         c = int(make_divisible(
             self.num_features_basic * self.width_mult / self.ratio) * self.ratio)
-        if self.width_mult in FLAGS.width_mult_list:
-            idx = FLAGS.width_mult_list.index(self.width_mult)
+        if self.width_mult in args.width_mult_list:
+            idx = args.width_mult_list.index(self.width_mult)
             y = nn.functional.batch_norm(
                 input,
                 self.bn[idx].running_mean[:c],

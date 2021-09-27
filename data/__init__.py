@@ -29,6 +29,10 @@ class Data:
                     module_name = d
                     m = import_module('data.' + module_name.lower())
                     datasets.append(getattr(m, module_name)(args, name='DIV2K'))
+                elif d == 'DIV2K_SWITCHABLE':
+                    module_name = d
+                    m = import_module('data.' + module_name.lower())
+                    datasets.append(getattr(m, module_name)(args, name='DIV2K'))
                 else:
                     module_name = d if d.find('DIV2K-Q') < 0 else 'DIV2KJPEG'
                     m = import_module('data.' + module_name.lower())
@@ -52,6 +56,10 @@ class Data:
                 m = import_module('data.benchmark')
                 testset = getattr(m, 'Benchmark')(args, train=False, name=d)
             elif d == 'DIV2K_PSNR':
+                    module_name = d
+                    m = import_module('data.' + module_name.lower())
+                    testset = getattr(m, module_name)(args, train=False, name='DIV2K')
+            elif d == 'DIV2K_SWITCHABLE':
                     module_name = d
                     m = import_module('data.' + module_name.lower())
                     testset = getattr(m, module_name)(args, train=False, name='DIV2K')

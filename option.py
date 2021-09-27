@@ -178,8 +178,12 @@ parser.add_argument("--sec_method", type=str, default="mean",
 # dynamic SR
 parser.add_argument("--dynamic", action="store_true", default=False, 
                     help="use dynamic SR")
-parser.add_argument('--width_mult_list', type=list, default=[0.33, 0.66, 1.0],
+parser.add_argument("--switchable", action="store_true", default=False, 
+                    help="use switchable SR")
+parser.add_argument('--width_mult_list', type=tuple, default=(0.33, 0.66, 1.0),
                     help='channel width multiple list')
+parser.add_argument('--data_part_list', type=tuple, default=('easy_x2_descending', 'midd_x2_descending', 'hard_x2_descending'),
+                    help='data part list')
 
 args = parser.parse_args()
 template.set_template(args)
