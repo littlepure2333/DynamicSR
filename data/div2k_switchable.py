@@ -98,21 +98,16 @@ class DIV2K_SWITCHABLE(srdata.SRData):
             return ret
         ###########################
         scale = self.scale[self.idx_scale]
-        if self.train:
-            lr, hr = _get_patch(
-                lr, hr, 
-                iy=iy, ix=ix,
-                data_partion=self.data_partion,
-                patch_size=self.args.patch_size,
-                scale=scale,
-                multi=(len(self.scale) > 1),
-                input_large=self.input_large
-            )
-            if not self.args.no_augment: lr, hr = common.augment(lr, hr)
-        else:
-            ih, iw = lr.shape[:2]
-            hr = hr[0:ih * scale, 0:iw * scale]
-        
+        lr, hr = _get_patch(
+            lr, hr, 
+            iy=iy, ix=ix,
+            data_partion=self.data_partion,
+            patch_size=self.args.patch_size,
+            scale=scale,
+            multi=(len(self.scale) > 1),
+            input_large=self.input_large
+        )
+        if not self.args.no_augment: lr, hr = common.augment(lr, hr)
 
         return lr, hr
 
@@ -136,10 +131,13 @@ class DIV2K_SWITCHABLE(srdata.SRData):
         self.data_partion = value
 
     def __len__(self):
-        return len(self.images_hr)
+        if self.train:
+            return len(self.images_hr)
+        else:
+            return len(self.img_iy_ix_list) // 1000
 
     def _get_index(self, idx):
         if self.train:
             return idx % len(self.images_hr)
         else:
-            return idx
+            return idx * 1000

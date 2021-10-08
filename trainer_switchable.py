@@ -27,7 +27,7 @@ class Trainer():
 
         self.ckp = ckp
         self.loader = loader
-        self.data_part, self.width_mult = None, None
+        self.data_part, self.cap_mult = None, None
         # self.loader_train = loader[0].loader_train
         # self.loader_test = loader[0].loader_test
         self.model = my_model
@@ -181,29 +181,37 @@ class Trainer():
 
     def terminate(self):
         if self.args.test_only:
-            self.test()
+            for i in range(len(self.args.data_part_list)):
+                self.data_part = self.args.data_part_list[i]
+                self.loader_test = self.loader[i].loader_test
+                self.cap_mult = self.args.cap_mult_list[i]
+                self.model.apply(lambda m: setattr(m, 'cap_mult', self.cap_mult))
+                self.ckp.write_log(
+                    '[Testing]\tdata part: {}\t model channel: {}x{}'.format(self.data_part, self.args.n_feats, self.cap_mult)
+                )
+                self.test()
             return True
         else:
             epoch = self.optimizer.get_last_epoch()
             if epoch >= self.args.epochs: return True
 
-            '''
+            # '''
             # discrete mode --------------👇
             part_epochs = self.args.epochs // len(self.args.data_part_list)
             if epoch % (part_epochs) == 0: # should change data
 
                 # harder sub-mode
-                # part_index = epoch // (part_epochs)
+                part_index = epoch // (part_epochs)
                 # easier sub-mode
-                part_index = len(self.args.data_part_list)-1 - epoch // (part_epochs)
+                # part_index = len(self.args.data_part_list)-1 - epoch // (part_epochs)
 
                 self.data_part = self.args.data_part_list[part_index]
                 self.loader_train = self.loader[part_index].loader_train
                 self.loader_test = self.loader[part_index].loader_test
 
                 # should change model
-                self.width_mult = self.args.width_mult_list[part_index]
-                self.model.apply(lambda m: setattr(m, 'width_mult', self.width_mult))
+                self.cap_mult = self.args.cap_mult_list[part_index]
+                self.model.apply(lambda m: setattr(m, 'cap_mult', self.cap_mult))
             # discrete mode --------------👆
             '''
             # recurrent mode --------------👇
@@ -217,14 +225,14 @@ class Trainer():
             self.loader_test = self.loader[part_index].loader_test
 
             # should change model
-            self.width_mult = self.args.width_mult_list[part_index]
-            self.model.apply(lambda m: setattr(m, 'width_mult', self.width_mult))
+            self.cap_mult = self.args.cap_mult_list[part_index]
+            self.model.apply(lambda m: setattr(m, 'cap_mult', self.cap_mult))
             # recurrent mode --------------👆
             # '''
 
             # log
             self.ckp.write_log(
-                '[Epoch {}]\tdata part: {}\t model channel: {}x{}'.format(epoch+1, self.data_part, self.args.n_feats, self.width_mult)
+                '[Epoch {}]\tdata part: {}\t model channel: {}x{}'.format(epoch+1, self.data_part, self.args.n_feats, self.cap_mult)
             )
             return epoch >= self.args.epochs
 

@@ -1,6 +1,6 @@
 import torch.nn as nn
 from option import args
-width_mult = args.width_mult_list[-1]
+cap_mult = args.cap_mult_list[-1]
 
 def make_divisible(v, divisor=4, min_value=1):
     """
@@ -27,12 +27,12 @@ class USConv2d(nn.Conv2d):
         if us[0]:
             in_channels_max = int(make_divisible(
                 in_channels
-                * width_mult
+                * cap_mult
                 / ratio[0]) * ratio[0])
         if us[1]:
             out_channels_max = int(make_divisible(
                 out_channels
-                * width_mult
+                * cap_mult
                 / ratio[1]) * ratio[1])
         groups = in_channels_max if depthwise else 1
         super(USConv2d, self).__init__(
@@ -42,7 +42,7 @@ class USConv2d(nn.Conv2d):
         self.depthwise = depthwise
         self.in_channels_basic = in_channels
         self.out_channels_basic = out_channels
-        self.width_mult = None
+        self.cap_mult = None
         self.us = us
         self.ratio = ratio
 
@@ -52,12 +52,12 @@ class USConv2d(nn.Conv2d):
         if self.us[0]:
             in_channels = int(make_divisible(
                 self.in_channels_basic
-                * self.width_mult
+                * self.cap_mult
                 / self.ratio[0]) * self.ratio[0])
         if self.us[1]:
             out_channels = int(make_divisible(
                 self.out_channels_basic
-                * self.width_mult
+                * self.cap_mult
                 / self.ratio[1]) * self.ratio[1])
         self.groups = in_channels if self.depthwise else 1
         weight = self.weight[:out_channels, :in_channels, :, :]
@@ -77,15 +77,15 @@ class USLinear(nn.Linear):
         out_features_max = out_features
         if us[0]:
             in_features_max = make_divisible(
-                in_features * width_mult)
+                in_features * cap_mult)
         if us[1]:
             out_features_max = make_divisible(
-                out_features * width_mult)
+                out_features * cap_mult)
         super(USLinear, self).__init__(
             in_features_max, out_features_max, bias=bias)
         self.in_features_basic = in_features
         self.out_features_basic = out_features
-        self.width_mult = None
+        self.cap_mult = None
         self.us = us
 
     def forward(self, input):
@@ -93,10 +93,10 @@ class USLinear(nn.Linear):
         out_features = self.out_features_basic
         if self.us[0]:
             in_features = make_divisible(
-                self.in_features_basic * self.width_mult)
+                self.in_features_basic * self.cap_mult)
         if self.us[1]:
             out_features = make_divisible(
-                self.out_features_basic * self.width_mult)
+                self.out_features_basic * self.cap_mult)
         weight = self.weight[:out_features, :in_features]
         if self.bias is not None:
             bias = self.bias[:out_features]
@@ -108,7 +108,7 @@ class USLinear(nn.Linear):
 class USBatchNorm2d(nn.BatchNorm2d):
     def __init__(self, num_features, ratio=1):
         num_features_max = int(make_divisible(
-            num_features * width_mult / ratio) * ratio)
+            num_features * cap_mult / ratio) * ratio)
         super(USBatchNorm2d, self).__init__(
             num_features_max, affine=True, track_running_stats=False)
         self.num_features_basic = num_features
@@ -117,21 +117,21 @@ class USBatchNorm2d(nn.BatchNorm2d):
             [nn.BatchNorm2d(i, affine=False)
              for i in [
                      int(make_divisible(
-                         num_features * width_mult / ratio) * ratio)
-                     for width_mult in args.width_mult_list]
+                         num_features * cap_mult / ratio) * ratio)
+                     for cap_mult in args.cap_mult_list]
              ]
         )
         self.ratio = ratio
-        self.width_mult = None
+        self.cap_mult = None
         self.ignore_model_profiling = True
 
     def forward(self, input):
         weight = self.weight
         bias = self.bias
         c = int(make_divisible(
-            self.num_features_basic * self.width_mult / self.ratio) * self.ratio)
-        if self.width_mult in args.width_mult_list:
-            idx = args.width_mult_list.index(self.width_mult)
+            self.num_features_basic * self.cap_mult / self.ratio) * self.ratio)
+        if self.cap_mult in args.cap_mult_list:
+            idx = args.cap_mult_list.index(self.cap_mult)
             y = nn.functional.batch_norm(
                 input,
                 self.bn[idx].running_mean[:c],

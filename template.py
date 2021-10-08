@@ -18,9 +18,11 @@ def set_template(args):
 
     if args.template.find('EDSR_paper') >= 0:
         args.model = 'EDSR'
+        args.lr = 1e-4
         args.n_resblocks = 32
         args.n_feats = 256
         args.res_scale = 0.1
+        args.patch_size = 192
 
         args.dir_data = dir_data
         args.scale = "2"
@@ -30,7 +32,7 @@ def set_template(args):
         args.ext = "sep"
         args.reset = True
         # args.reset = False
-        args.epochs = 5000
+        # args.epochs = 5000
         # args.data_range = '1-320/801-810'
 
         # args.load = "20210609_EDSR_x3_ps192_lr0.0001_e5000_1*L1_nf256_p0.1"
@@ -41,17 +43,17 @@ def set_template(args):
         # args.data_partion = 0.1
         # args.file_suffix = "_psnr_up_new.pt" #
 
-        # args.save = "{}_{}_x{}_ps{}_lr{}_e{}_{}_nf{}_p{}".format(today, args.model, args.scale, args.patch_size, args.lr, args.epochs, args.loss, args.n_feats, args.data_partion)
+        args.save = "{}_{}_paper_x{}_ps{}_lr{}".format(today, args.model, args.scale, args.patch_size, args.lr)
         # args.seed = 6
-        args.chop = True
-        args.ssim = True
+        # args.chop = True
+        # args.ssim = True
         
-        args.save = "20210619_EDSR_x2_ps192_lr0.0001_e5000_1*L1_nf256_p1_test"
+        # args.save = "20210619_EDSR_x2_ps192_lr0.0001_e5000_1*L1_nf256_p1_test"
         
-        args.test_only = 'True'
-        args.data_test = 'Set5+Set14+B100+Urban100'
+        # args.test_only = 'True'
+        # args.data_test = 'Set5+Set14+B100+Urban100'
 
-        args.pre_train = "/home/shizun/experiment/20210609_EDSR_x2_ps192_lr0.0001_e5000_1*L1_nf256_p1/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20210609_EDSR_x2_ps192_lr0.0001_e5000_1*L1_nf256_p1/model/model_best.pt"
 
 
     if args.template.find('MDSR') >= 0:
@@ -284,10 +286,10 @@ def set_template(args):
         args.n_feats = 256
         args.res_scale = 0.1
         args.patch_size = 192
-        args.epochs = 300
+        args.epochs = 900
         args.dir_data = dir_data
         args.scale = "2"
-        args.device = "3"
+        args.device = "1"
         args.n_GPUs = 1
         args.batch_size = 16
         args.print_every = 10
@@ -299,8 +301,37 @@ def set_template(args):
         args.data_test = 'DIV2K'
         args.switchable = True
         args.data_part_list = ('easy_x2_descending', 'midd_x2_descending', 'hard_x2_descending')
-        args.width_mult_list = (0.33, 0.67, 1.0)
-        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_recurrent_easier".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
+        args.cap_mult_list = (0.33, 0.67, 1.0)
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_layer_discrete_harder".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
+
+    if args.template.find('EDSR_switchable_test') >= 0:
+        # args.model = 'EDSR'
+        args.model = 'EDSR_switchable'
+        args.lr = 1e-4
+        args.n_resblocks = 32
+        args.n_feats = 256
+        args.res_scale = 0.1
+        args.patch_size = 192
+        args.epochs = 900
+        args.dir_data = dir_data
+        args.scale = "2"
+        args.device = "1"
+        args.n_GPUs = 1
+        args.batch_size = 16
+        args.print_every = 10
+        args.ext = "sep"
+        args.reset = False
+        args.save_results = False
+        args.save_gt = False
+        args.data_train = 'DIV2K_SWITCHABLE'
+        args.data_test = 'DIV2K_SWITCHABLE'
+        args.switchable = True
+        args.test_only = True
+        # args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_ps192_lr0.0001/model/model_best.pt"
+        args.pre_train = "/home/shizun/experiment/20211003_EDSR_switchable_x2_e900_ps192_lr0.0001_discrete_harder/model/model_best.pt"
+        args.data_part_list = ('easy_x2_descending', 'midd_x2_descending', 'hard_x2_descending')
+        args.cap_mult_list = (0.33, 0.67, 1.0)
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_test_discrete_harder".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
 
     if args.template.find('EDSR_32') >= 0:
         args.model = 'EDSR'
