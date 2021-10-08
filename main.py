@@ -13,6 +13,8 @@ if args.dynamic:
     from trainer_dynamic import Trainer
 if args.switchable:
     from trainer_switchable import Trainer
+if args.meantime:
+    from trainer_meantime import Trainer
 else:
     from trainer import Trainer
 import os

@@ -180,6 +180,8 @@ parser.add_argument("--dynamic", action="store_true", default=False,
                     help="use dynamic SR")
 parser.add_argument("--switchable", action="store_true", default=False, 
                     help="use switchable SR")
+parser.add_argument("--meantime", action="store_true", default=False, 
+                    help="use switchable SR and meantime data")
 parser.add_argument('--cap_mult_list', type=tuple, default=(0.33, 0.66, 1.0),
                     help='capacity multiple list')
 parser.add_argument('--data_part_list', type=tuple, default=('easy_x2_descending', 'midd_x2_descending', 'hard_x2_descending'),
