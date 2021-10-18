@@ -68,53 +68,53 @@ class Trainer():
             # pairs = (lr_s, hr_s, lr_m, hr_m, lr_h, hr_h)
             # batch mode --------------👇
             # for i in range(3):           # harder sub-mode
-            # # for i in reversed(range(3)): # easier sub-mode
-            #     timer_data.tic()
-            #     lr, hr = self.prepare(pairs[2*i], pairs[2*i+1])
-            #     timer_data.hold()
-
-            #     timer_model.tic()
-            #     self.optimizer.zero_grad()
-            #     self.cap_mult = self.args.cap_mult_list[i]
-            #     self.model.apply(lambda m: setattr(m, 'cap_mult', self.cap_mult))
-            #     sr = self.model(lr, 0)
-            #     loss = self.loss(sr, hr)
-
-            #     loss.backward()
-            #     if self.args.gclip > 0:
-            #         utils.clip_grad_value_(
-            #             self.model.parameters(),
-            #             self.args.gclip
-            #         )
-            #     self.optimizer.step()
-            #     timer_model.hold()
-            # batch mode --------------👆
-
-            # # all mode --------------👇
-            loss = 0
-            self.optimizer.zero_grad()
-            for i in range(3):
+            for i in reversed(range(3)): # easier sub-mode
                 timer_data.tic()
                 lr, hr = self.prepare(pairs[2*i], pairs[2*i+1])
                 timer_data.hold()
 
                 timer_model.tic()
+                self.optimizer.zero_grad()
                 self.cap_mult = self.args.cap_mult_list[i]
                 self.model.apply(lambda m: setattr(m, 'cap_mult', self.cap_mult))
                 sr = self.model(lr, 0)
-                loss += self.loss(sr, hr)
-                timer_model.hold()
+                loss = self.loss(sr, hr)
 
-            timer_model.tic()
-            loss.backward()
-            if self.args.gclip > 0:
-                utils.clip_grad_value_(
-                    self.model.parameters(),
-                    self.args.gclip
-                )
-            self.optimizer.step()
-            timer_model.hold()
-            # # all mode --------------👆
+                loss.backward()
+                if self.args.gclip > 0:
+                    utils.clip_grad_value_(
+                        self.model.parameters(),
+                        self.args.gclip
+                    )
+                self.optimizer.step()
+                timer_model.hold()
+            # batch mode --------------👆
+
+            # batch all mode --------------👇
+            # loss = 0
+            # self.optimizer.zero_grad()
+            # for i in range(3):
+            #     timer_data.tic()
+            #     lr, hr = self.prepare(pairs[2*i], pairs[2*i+1])
+            #     timer_data.hold()
+
+            #     timer_model.tic()
+            #     self.cap_mult = self.args.cap_mult_list[i]
+            #     self.model.apply(lambda m: setattr(m, 'cap_mult', self.cap_mult))
+            #     sr = self.model(lr, 0)
+            #     loss += self.loss(sr, hr)
+            #     timer_model.hold()
+
+            # timer_model.tic()
+            # loss.backward()
+            # if self.args.gclip > 0:
+            #     utils.clip_grad_value_(
+            #         self.model.parameters(),
+            #         self.args.gclip
+            #     )
+            # self.optimizer.step()
+            # timer_model.hold()
+            # batch all mode --------------👆
 
             if (batch + 1) % self.args.print_every == 0:
                 self.ckp.write_log('[{}/{}]\t{}\t{:.1f}+{:.1f}s'.format(
@@ -138,6 +138,7 @@ class Trainer():
         self.ckp.add_log(
             torch.zeros(1, len(self.loader_test), len(self.scale))
         )
+        self.model.apply(lambda m: setattr(m, 'cap_mult', 1.0))
         self.model.eval()
 
         timer_test = utility.timer()
