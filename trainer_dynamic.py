@@ -89,6 +89,7 @@ class Trainer():
             #     sr = self.model(lr, 0)
             #     loss = self.loss(sr[i],sr_last_detach)
             #     loss.backward()
+            #     torch.cuda.empty_cache()
 
             # increase mode
             # for i, sr_i in enumerate(sr):
@@ -106,7 +107,13 @@ class Trainer():
             for i in range(1, len(sr)):
                 sr = self.model(lr, 0)
                 loss = self.loss(sr[i], hr)
+                loss.backward()
+                torch.cuda.empty_cache()
+            
+            # only last mode
+            loss = self.loss(sr[-1], hr)
             loss.backward()
+            
 
             if self.args.gclip > 0:
                 utils.clip_grad_value_(
