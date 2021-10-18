@@ -11,10 +11,12 @@ from option import args
 # else:
 if args.dynamic:
     from trainer_dynamic import Trainer
-if args.switchable:
+elif args.switchable:
     from trainer_switchable import Trainer
-if args.meantime:
+elif args.meantime:
     from trainer_meantime import Trainer
+elif args.multi:
+    from trainer_multi import Trainer
 else:
     from trainer import Trainer
 import os
@@ -41,7 +43,7 @@ def main():
                 loader = data.Data(args)
             _model = model.Model(args, checkpoint)
             _loss = loss.Loss(args, checkpoint) if not args.test_only else None
-            utility.print_params(_model,checkpoint,args)
+            # utility.print_params(_model,checkpoint,args)
             t = Trainer(args, loader, _model, _loss, checkpoint)
             while not t.terminate():
                 t.train()

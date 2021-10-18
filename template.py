@@ -3,9 +3,11 @@ machine  = {"A3":"/data/shizun/dataset/",
             "C4":"/data/shizun/dataset/",
             "4gpu-2":"/home/shizun/datasets/image_process/",
             "4gpu-5":"/data/shizun/"}
-dir_data = machine["4gpu-5"]
 
 import datetime
+import  socket
+hostname = socket.gethostname() # 获取当前主机名
+dir_data = machine[hostname]
 today = datetime.datetime.now().strftime('%Y%m%d')
 
 def set_template(args):
@@ -230,6 +232,32 @@ def set_template(args):
         args.data_partion = 0.1
         args.file_suffix = "_psnr_up_new.pt"
 
+    if args.template.find('EDSR_multi') >= 0:
+        args.model = 'EDSR_multi'
+        args.lr = 1e-4
+        args.decay = '200'
+        args.n_resblocks = 32
+        args.n_feats = 256
+        args.res_scale = 0.1
+        args.patch_size = 192
+        args.epochs = 300
+        args.dir_data = dir_data
+        args.data_train = 'DIV2K'
+        args.data_test = 'DIV2K'
+        args.scale = "2"
+        args.device = "1"
+        args.n_GPUs = 1
+        args.batch_size = 16
+        args.print_every = 10
+        args.ext = "sep"
+        args.reset = True
+        args.multi = True
+        args.shared_tail = False
+        args.exit_interval = 4
+        args.conv_thre = 15
+        args.freeze = True
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval)
+
     if args.template.find('EDSR_dynamic') >= 0:
         args.model = 'EDSR_dynamic'
         args.lr = 1e-4
@@ -237,19 +265,23 @@ def set_template(args):
         args.n_feats = 256
         args.res_scale = 0.1
         args.patch_size = 192
+        args.epochs = 900
         args.dir_data = dir_data
         args.scale = "2"
-        args.device = "0,1"
+        args.device = "2,3"
         args.n_GPUs = 2
         args.batch_size = 16
         args.print_every = 10
         args.ext = "sep"
-        args.reset = True
-        args.save_results = 'True'
-        args.save_gt = True
+        args.reset = False
+        args.save_results = False
+        args.save_gt = False
         args.dynamic = True
-        # args.save = "20210317_edsr_x4_r24_f224_lr1e-5_cutblur0.5_inferenece"
-        args.save = "{}_{}_forward_every_x{}_ps{}_lr{}".format(today, args.model, args.scale, args.patch_size, args.lr)
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_forward_every_new".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
+
+        # resume
+        # args.load = "/home/shizun/experiment/20211014_EDSR_dynamic_x2_e900_ps192_lr0.0001_sum/"
+        # args.resume = -1
 
         ### inference all images and save results
         # args.cutblur = 0
@@ -286,24 +318,24 @@ def set_template(args):
         args.n_feats = 256
         args.res_scale = 0.1
         args.patch_size = 192
-        args.epochs = 300
+        args.epochs = 900
         args.dir_data = dir_data
         args.scale = "2"
-        args.device = "2,3"
-        args.n_GPUs = 2
+        args.device = "1"
+        args.n_GPUs = 1
         args.batch_size = 16
         args.print_every = 10
         args.ext = "sep"
         args.reset = True
         args.save_results = 'True'
         args.save_gt = True
-        args.data_train = 'DIV2K_MEANTIME'
+        args.data_train = 'DIV2K_SWITCHABLE'
         args.data_test = 'DIV2K'
-        args.switchable = False
-        args.meantime = True
+        args.switchable = True
+        args.meantime = False
         args.data_part_list = ('easy_x2_descending', 'midd_x2_descending', 'hard_x2_descending')
         args.cap_mult_list = (0.33, 0.67, 1.0)
-        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_all".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_layer_discrete_harder_tail3".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
 
     if args.template.find('EDSR_switchable_test') >= 0:
         # args.model = 'EDSR'
@@ -316,7 +348,7 @@ def set_template(args):
         args.epochs = 900
         args.dir_data = dir_data
         args.scale = "2"
-        args.device = "1"
+        args.device = "3"
         args.n_GPUs = 1
         args.batch_size = 16
         args.print_every = 10
@@ -327,12 +359,13 @@ def set_template(args):
         args.data_train = 'DIV2K_SWITCHABLE'
         args.data_test = 'DIV2K_SWITCHABLE'
         args.switchable = True
+        args.meantime = False
         args.test_only = True
         # args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_ps192_lr0.0001/model/model_best.pt"
-        args.pre_train = "/home/shizun/experiment/20211003_EDSR_switchable_x2_e900_ps192_lr0.0001_discrete_harder/model/model_best.pt"
+        args.pre_train = "/home/shizun/experiment/20211011_EDSR_switchable_x2_e900_ps192_lr0.0001_layer_discrete_harder_tail3/model/model_best.pt"
         args.data_part_list = ('easy_x2_descending', 'midd_x2_descending', 'hard_x2_descending')
         args.cap_mult_list = (0.33, 0.67, 1.0)
-        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_test_discrete_harder".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_test_layer_discrete_harder_tail3".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
 
     if args.template.find('EDSR_32') >= 0:
         args.model = 'EDSR'

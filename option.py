@@ -1,11 +1,12 @@
 import argparse
+from urllib import parse
 import template
 
 parser = argparse.ArgumentParser(description='EDSR and MDSR')
 
-parser.add_argument('--debug', action='store_true',
+parser.add_argument('--debug', action='store_true', default=False,
                     help='Enables debug mode')
-parser.add_argument('--template', default='EDSR_psnr',
+parser.add_argument('--template', default='EDSR_multi',
                     help='You can set various templates in option.py')
 
 # Hardware specifications
@@ -13,7 +14,7 @@ parser.add_argument('--n_threads', type=int, default=6,
                     help='number of threads for data loading')
 parser.add_argument('--device', type=str, default="0,1",
                     help='indicate cuda visible devices')
-parser.add_argument('--cpu', action='store_true',
+parser.add_argument('--cpu', action='store_true', default=False,
                     help='use cpu only')
 parser.add_argument('--n_GPUs', type=int, default=1,
                     help='number of GPUs')
@@ -31,9 +32,9 @@ parser.add_argument('--data_test', type=str, default='DIV2K',
                     help='test dataset name')
 parser.add_argument('--cutblur', type=float, default=None,
                     help='alpha value in cutblur, 0 denotes no cutblur and modified EDSR, None denotes normal EDSR')
-parser.add_argument('--patchnet', action='store_true',
+parser.add_argument('--patchnet', action='store_true', default=False,
                     help='use patchnet to online hard patches mining')
-parser.add_argument('--ohem', action='store_true',
+parser.add_argument('--ohem', action='store_true', default=False,
                     help='use online hard examples mining (cooperate with args.data_partion)')
 parser.add_argument('--data_partion', type=float, default=1,
                     help='allow the first what partion to train, range[-1,1], negative denotes reverse order')
@@ -53,9 +54,9 @@ parser.add_argument('--rgb_range', type=int, default=255,
                     help='maximum value of RGB')
 parser.add_argument('--n_colors', type=int, default=3,
                     help='number of color channels to use')
-parser.add_argument('--chop', action='store_true',
+parser.add_argument('--chop', action='store_true', default=False,
                     help='enable memory-efficient forward')
-parser.add_argument('--no_augment', action='store_true',
+parser.add_argument('--no_augment', action='store_true', default=False,
                     help='do not use data augmentation')
 
 # Model specifications
@@ -78,7 +79,7 @@ parser.add_argument('--res_scale', type=float, default=1,
                     help='residual scaling')
 parser.add_argument('--shift_mean', default=True,
                     help='subtract pixel mean from the input')
-parser.add_argument('--dilation', action='store_true',
+parser.add_argument('--dilation', action='store_true', default=False,
                     help='use dilated convolution')
 parser.add_argument('--precision', type=str, default='single',
                     choices=('single', 'half'),
@@ -99,7 +100,7 @@ parser.add_argument('--reduction', type=int, default=16,
                     help='number of feature maps reduction')
 
 # Training specifications
-parser.add_argument('--reset', action='store_true',
+parser.add_argument('--reset', action='store_true', default=False,
                     help='reset the training')
 parser.add_argument('--test_every', type=int, default=1000,
                     help='do test per every N batches')
@@ -109,9 +110,9 @@ parser.add_argument('--batch_size', type=int, default=16,
                     help='input batch size for training')
 parser.add_argument('--split_batch', type=int, default=1,
                     help='split the batch into smaller chunks')
-parser.add_argument('--self_ensemble', action='store_true',
+parser.add_argument('--self_ensemble', action='store_true', default=False,
                     help='use self-ensemble method for test')
-parser.add_argument('--test_only', action='store_true',
+parser.add_argument('--test_only', action='store_true', default=False,
                     help='set this option to test the model')
 parser.add_argument('--gan_k', type=int, default=1,
                     help='k value for adversarial loss')
@@ -150,21 +151,21 @@ parser.add_argument('--load', type=str, default='',
                     help='file name to load')
 parser.add_argument('--resume', type=int, default=0,
                     help='resume from specific checkpoint')
-parser.add_argument('--save_models', action='store_true',
+parser.add_argument('--save_models', action='store_true',  default=False,
                     help='save all intermediate models')
 parser.add_argument('--print_every', type=int, default=100,
                     help='how many batches to wait before logging training status')
-parser.add_argument('--save_results', action='store_true',
+parser.add_argument('--save_results', action='store_true', default=False,
                     help='save output results')
-parser.add_argument('--save_gt', action='store_true',
+parser.add_argument('--save_gt', action='store_true', default=False,
                     help='save low-resolution and high-resolution images together')
 parser.add_argument('--ssim', default=True,
                     help='caculate and log SSIM')
-parser.add_argument('--lpips_alex', action='store_true',
+parser.add_argument('--lpips_alex', action='store_true', default=False,
                     help='calculate IPIPS using alexnet')
-parser.add_argument('--lpips_vgg', action='store_true',
+parser.add_argument('--lpips_vgg', action='store_true', default=False,
                     help='calculate IPIPS using vggnet')
-parser.add_argument('--save_psnr_list', action='store_true',
+parser.add_argument('--save_psnr_list', action='store_true', default=False,
                     help="save every test image's psnr in a list")
 
 # auto assist specifications
@@ -180,12 +181,22 @@ parser.add_argument("--dynamic", action="store_true", default=False,
                     help="use dynamic SR")
 parser.add_argument("--switchable", action="store_true", default=False, 
                     help="use switchable SR")
+parser.add_argument("--multi", action="store_true", default=False, 
+                    help="use multi-exit SR")
+parser.add_argument("--shared_tail", action="store_true", default=False,
+                    help="if share the parameter of tail(upsampler)")
+parser.add_argument("--conv_thre", type=int, default=15,
+                    help="convergence threshold, how many epoch the metric didn't imporve then converged")
+parser.add_argument("--freeze", action="store_true", default=False, 
+                    help="whether freeze previous exit's parameters")
 parser.add_argument("--meantime", action="store_true", default=False, 
                     help="use switchable SR and meantime data")
 parser.add_argument('--cap_mult_list', type=tuple, default=(0.33, 0.66, 1.0),
                     help='capacity multiple list')
 parser.add_argument('--data_part_list', type=tuple, default=('easy_x2_descending', 'midd_x2_descending', 'hard_x2_descending'),
                     help='data part list')
+parser.add_argument('--exit_interval', type=int, default=1,
+                    help='every N layers will output an exit')
 
 args = parser.parse_args()
 template.set_template(args)
