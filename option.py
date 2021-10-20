@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser(description='EDSR and MDSR')
 
 parser.add_argument('--debug', action='store_true', default=False,
                     help='Enables debug mode')
-parser.add_argument('--template', default='EDSR_multi',
+parser.add_argument('--template', default='EDSR_succession',
                     help='You can set various templates in option.py')
 
 # Hardware specifications
@@ -159,8 +159,8 @@ parser.add_argument('--save_results', action='store_true', default=False,
                     help='save output results')
 parser.add_argument('--save_gt', action='store_true', default=False,
                     help='save low-resolution and high-resolution images together')
-parser.add_argument('--ssim', default=True,
-                    help='caculate and log SSIM')
+parser.add_argument('--ssim', action='store_true', default=False,
+                    help='caculate and log SSIM (time-consuming for large image)')
 parser.add_argument('--lpips_alex', action='store_true', default=False,
                     help='calculate IPIPS using alexnet')
 parser.add_argument('--lpips_vgg', action='store_true', default=False,
@@ -181,8 +181,8 @@ parser.add_argument("--dynamic", action="store_true", default=False,
                     help="use dynamic SR")
 parser.add_argument("--switchable", action="store_true", default=False, 
                     help="use switchable SR")
-parser.add_argument("--multi", action="store_true", default=False, 
-                    help="use multi-exit SR")
+parser.add_argument("--succession", action="store_true", default=False, 
+                    help="optimize multi-exit SR in succession")
 parser.add_argument("--shared_tail", action="store_true", default=False,
                     help="if share the parameter of tail(upsampler)")
 parser.add_argument("--conv_thre", type=int, default=15,

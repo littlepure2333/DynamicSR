@@ -15,8 +15,8 @@ elif args.switchable:
     from trainer_switchable import Trainer
 elif args.meantime:
     from trainer_meantime import Trainer
-elif args.multi:
-    from trainer_multi import Trainer
+elif args.succession:
+    from trainer_succession import Trainer
 else:
     from trainer import Trainer
 import os
