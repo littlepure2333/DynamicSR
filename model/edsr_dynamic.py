@@ -72,7 +72,7 @@ class EDSR(nn.Module):
         output = []
         for i, layer in enumerate(self.body):
             res = layer(res)
-            if i % 4 == 0:
+            if i % 4 == 3:
                 y = x + res
                 output.append(self.add_mean(self.tail(y)))
 
