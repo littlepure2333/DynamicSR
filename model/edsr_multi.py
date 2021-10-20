@@ -16,9 +16,12 @@ class EDSR(nn.Module):
         kernel_size = 3 
         scale = args.scale[0]
         act = nn.ReLU(True)
+        
         exit_interval = args.exit_interval
         self.exit_list = list(range(exit_interval-1, n_resblocks, exit_interval))
         self.exit_index = len(self.exit_list) - 1
+        self.shared_tail = args.shared_tail
+
         self.sub_mean = common.MeanShift(args.rgb_range)
         self.add_mean = common.MeanShift(args.rgb_range, sign=1)
 
@@ -57,7 +60,10 @@ class EDSR(nn.Module):
         res = forward_body(x)
         res += x
 
-        x = self.forward_tail(x)
+        if self.shared_tail:
+            x = self.tail(res)
+        else:
+            x = self.tail[self.exit_index](res)
         x = self.add_mean(x)
 
         return x

@@ -179,6 +179,8 @@ parser.add_argument("--sec_method", type=str, default="mean",
 # dynamic SR
 parser.add_argument("--dynamic", action="store_true", default=False, 
                     help="use dynamic SR")
+parser.add_argument("--efficient", action="store_true", default=False, 
+                    help="use multi-exit SR efficiently")
 parser.add_argument("--switchable", action="store_true", default=False, 
                     help="use switchable SR")
 parser.add_argument("--succession", action="store_true", default=False, 

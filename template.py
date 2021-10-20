@@ -232,6 +232,31 @@ def set_template(args):
         args.data_partion = 0.1
         args.file_suffix = "_psnr_up_new.pt"
 
+    if args.template.find('EDSR_efficient') >= 0:
+        args.model = 'EDSR_multi'
+        args.lr = 1e-4
+        args.decay = '200'
+        args.n_resblocks = 32
+        args.n_feats = 256
+        args.res_scale = 0.1
+        args.patch_size = 192
+        args.epochs = 900
+        args.dir_data = dir_data
+        args.data_train = 'DIV2K'
+        args.data_test = 'DIV2K'
+        args.scale = "2"
+        args.device = "0,1"
+        args.n_GPUs = 2
+        args.data_range = '1-16/801-803'
+        args.batch_size = 16
+        args.print_every = 10
+        args.ext = "sep"
+        args.reset = True
+        args.efficient = True
+        args.shared_tail = True
+        args.exit_interval = 4
+        args.save = "{}_{}_efficient_x{}_e{}_ps{}_lr{}_n{}_i{}_s{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.shared_tail)
+
     if args.template.find('EDSR_succession') >= 0:
         args.model = 'EDSR_multi'
         args.lr = 1e-4
@@ -247,7 +272,7 @@ def set_template(args):
         args.scale = "2"
         args.device = "1"
         args.n_GPUs = 1
-        args.data_range = '1-800/801-803'
+        # args.data_range = '1-800/801-803'
         args.batch_size = 16
         args.print_every = 10
         args.ext = "sep"
@@ -255,7 +280,7 @@ def set_template(args):
         args.succession = True
         args.shared_tail = True
         args.exit_interval = 1
-        args.conv_thre = 1
+        args.conv_thre = 20
         args.freeze = True
         args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_t{}_s{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.conv_thre, args.shared_tail)
 
@@ -278,7 +303,7 @@ def set_template(args):
         args.save_results = False
         args.save_gt = False
         args.dynamic = True
-        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_forward_every".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_only_last".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
 
         # resume
         # args.load = "/home/shizun/experiment/20211014_EDSR_dynamic_x2_e900_ps192_lr0.0001_sum/"
