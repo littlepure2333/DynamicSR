@@ -216,7 +216,7 @@ class Trainer():
                             m.requires_grad = False
                         for m in self.model.model.tail[self.exit_index+1].parameters():
                             m.requires_grad = True
-                self.optimizer = self.optimizer = utility.make_optimizer(self.args, self.model)
+                self.optimizer = utility.make_optimizer(self.args, self.model)
                 # print parameters frozen status
                 for name, param in self.model.named_parameters(): 
                     param_info = str(name) + ' ' + str(param.size()) + ' ' + str(param.requires_grad)
