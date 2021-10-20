@@ -43,17 +43,10 @@ class EDSR(nn.Module):
         self.body = nn.Sequential(*m_body)
         if args.shared_tail:
             self.tail = nn.Sequential(*m_tail)
-            self._forward_tail = self._forward_shared_tail
+            self.forward_tail = self.tail
         else:
             self.tail = nn.ModuleList([copy.deepcopy(nn.Sequential(*m_tail)) for _ in self.exit_list])
-            self._forward_tail = self._forward_distinct_tail
-
-    def _forward_shared_tail(self, x):
-        return self.tail(x)
-
-    def _forward_distinct_tail(self, x):
-        forward_tail = self.tail[self.exit_index]
-        return forward_tail(x)
+            self.forward_tail = self.tail[self.exit_index]
 
     # @torchsnooper.snoop()
     def forward(self, x):
@@ -64,7 +57,7 @@ class EDSR(nn.Module):
         res = forward_body(x)
         res += x
 
-        x = self._forward_tail(x)
+        x = self.forward_tail(x)
         x = self.add_mean(x)
 
         return x
