@@ -11,6 +11,8 @@ from option import args
 # else:
 if args.dynamic:
     from trainer_dynamic import Trainer
+elif args.efficient:
+    from trainer_efficient import Trainer
 elif args.switchable:
     from trainer_switchable import Trainer
 elif args.meantime:

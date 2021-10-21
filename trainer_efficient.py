@@ -155,6 +155,7 @@ class Trainer():
                         save_dict['SR-{}'.format(i)] = sr_i
                         item_psnr = utility.calc_psnr(sr_i, hr, scale, self.args.rgb_range, dataset=d)
                         self.ckp.log[-1, idx_data, i] += item_psnr
+                        torch.cuda.empty_cache()
                     
                     b,c,h,w = sr_i.size()
                     if self.ssim:
