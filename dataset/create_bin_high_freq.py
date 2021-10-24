@@ -56,7 +56,7 @@ def box_filter(imSrc, patch_size):
     return imDst
 
 # @jit(nopython=True)
-def value_sort(value_map, iy, ix):
+def value_sort(iy, ix, value_map):
     index_value = np.hstack((iy, ix, value_map.reshape(-1,1)))
     sort_index = np.argsort(-index_value[:,-1])
     index_value = index_value[sort_index]
@@ -66,16 +66,18 @@ if __name__ == '__main__':
     ################## parameters
     eps = 1e-9
     rgb_range = 255
-    scale = 2
+    scale = 4
     lr_dir = '/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X{}/'.format(scale)
     hr_patch_size = 192 # the size is for hr patch
-    # filter = 'Canny'
+    hr_patch_stride = 24
+    filter = 'Canny'
     # filter = 'Sobel'
-    filter = 'Laplacian'
+    # filter = 'Laplacian'
     #################
 
     lr_patch_size = hr_patch_size // scale
-    print("lr patch size:{}".format(lr_patch_size))
+    lr_patch_stride = hr_patch_stride // scale
+    print("hr patch size:{}\thr patch stride:{}\tlr patch size:{}\tlr patch stride:{}".format(hr_patch_size, hr_patch_stride, lr_patch_size, lr_patch_stride))
     all_files = os.listdir(lr_dir)
     files = []
     for f in all_files:
@@ -119,17 +121,19 @@ if __name__ == '__main__':
         lr_filtered = lr_filtered.astype(np.int32)
         lr_filtered_map = box_filter(lr_filtered, lr_patch_size)
 
-        [hei, wid] = lr_filtered_map.shape
+        lr_filtered_map_stride = lr_filtered_map[::hr_patch_stride,::hr_patch_stride]
+
+        [hei, wid] = lr_filtered_map_stride.shape
 
         # generate index
-        iy = np.arange(hei).reshape(-1,1).repeat(wid,axis=1).reshape(-1,1)
-        ix = np.arange(wid).reshape(1,-1).repeat(hei,axis=0).reshape(-1,1)
+        iy = np.arange(hei).reshape(-1,1).repeat(wid,axis=1).reshape(-1,1)*hr_patch_stride
+        ix = np.arange(wid).reshape(1,-1).repeat(hei,axis=0).reshape(-1,1)*hr_patch_stride
 
         # sort index by value
-        index_value = value_sort(lr_filtered_map, iy, ix)
+        index_value = value_sort(iy, ix, lr_filtered_map_stride)
 
         # save patch index sorted by psnr
-        save_file = lr_file.replace(".pt","_{}_p{}.pt".format(filter, hr_patch_size))
+        save_file = lr_file.replace(".pt","_{}_p{}_s{}.pt".format(filter, hr_patch_size, hr_patch_stride))
         # print("saving {}".format(save_file))
         with open(save_file, 'wb') as _f:
             pickle.dump(index_value, _f)
