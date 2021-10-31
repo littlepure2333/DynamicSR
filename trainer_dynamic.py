@@ -67,7 +67,7 @@ class Trainer():
             timer_model.tic()
 
             self.optimizer.zero_grad()
-            sr = self.model(lr, 0)
+            sr, decisions = self.model(lr, 0)
             loss = 0
             # distill mode
             # for i in range(len(sr) - 1):
@@ -101,18 +101,23 @@ class Trainer():
             #     loss += self.loss(sr_i, hr)
             # loss.backward()
 
-            # forward every mode
-            loss = self.loss(sr[0], hr)
+            # sum decision mode
+            for sr_i, de_i in zip(sr, decisions):
+                loss += self.loss(sr_i, de_i, hr)
             loss.backward()
-            for i in range(1, len(sr)):
-                sr = self.model(lr, 0)
-                loss = self.loss(sr[i], hr)
-                loss.backward()
-                torch.cuda.empty_cache()
+
+            # forward every mode
+            # loss = self.loss(sr[0], hr)
+            # loss.backward()
+            # for i in range(1, len(sr)):
+            #     sr = self.model(lr, 0)
+            #     loss = self.loss(sr[i], hr)
+            #     loss.backward()
+            #     torch.cuda.empty_cache()
             
             # only last mode
-            loss = self.loss(sr[-1], hr)
-            loss.backward()
+            # loss = self.loss(sr[-1], hr)
+            # loss.backward()
             
 
             if self.args.gclip > 0:
@@ -137,14 +142,16 @@ class Trainer():
         self.loss.end_log(len(self.loader_train))
         self.error_last = self.loss.log[-1, -1]
         self.optimizer.schedule()
+        torch.cuda.empty_cache()
 
     def test(self):
         torch.set_grad_enabled(False)
 
         epoch = self.optimizer.get_last_epoch()
         self.ckp.write_log('\nEvaluation:')
+        exit_len = int(self.args.n_resblocks/self.args.exit_interval)
         self.ckp.add_log(
-            torch.zeros(1, len(self.loader_test), self.args.n_resblocks//4)
+            torch.zeros(1, len(self.loader_test), exit_len)
         )
         self.model.eval()
 
@@ -160,7 +167,7 @@ class Trainer():
 
                 for lr, hr, filename in tqdm(d, ncols=80):
                     lr, hr = self.prepare(lr, hr)
-                    sr = self.model(lr, idx_scale)
+                    sr, decisions = self.model(lr, idx_scale)
                     for i, sr_i in enumerate(sr):
                         sr_i = utility.quantize(sr_i, self.args.rgb_range)
                         save_dict['SR-{}'.format(i)] = sr_i
@@ -194,7 +201,7 @@ class Trainer():
 
                 best = self.ckp.log.max(0)
 
-                psnr_list = ["{}:{:.3f}".format(i, self.ckp.log[-1, idx_data, i]) for i in range(self.args.n_resblocks//4)]
+                psnr_list = ["{}:{:.3f}".format(i, self.ckp.log[-1, idx_data, i]) for i in range(exit_len)]
                 psnr_list = ','.join(psnr_list)
 
                 self.ckp.write_log(

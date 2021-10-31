@@ -164,7 +164,7 @@ class checkpoint():
     def save_results_dynamic(self, dataset, filename, save_dict, scale):
         if self.args.save_results:
             filename = self.get_path(
-                'results-{}'.format(dataset.dataset.name),
+                'results-{}'.format(self.args.data_test[0]),
                 '{}_x{}_'.format(filename, scale)
             )
 
@@ -194,6 +194,12 @@ def calc_psnr(sr, hr, scale, rgb_range, dataset=None):
 
     valid = diff[..., shave:-shave, shave:-shave]
     mse = valid.pow(2).mean()
+    # mse = diff.pow(2).mean()
+    if mse <= 0:
+        print(mse)
+        print(sr)
+        print(hr)
+        raise ValueError
 
     return -10 * math.log10(mse)
 

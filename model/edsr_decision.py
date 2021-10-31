@@ -18,6 +18,7 @@ class EDSR(nn.Module):
         act = nn.ReLU(True)
 
         self.exit_interval = args.exit_interval
+        self.exit_threshold = args.exit_threshold
 
         self.sub_mean = common.MeanShift(args.rgb_range)
         self.add_mean = common.MeanShift(args.rgb_range, sign=1)
@@ -53,25 +54,40 @@ class EDSR(nn.Module):
         self.eedm = nn.Sequential(*m_eedm)
 
     def forward(self, x):
-        x = self.sub_mean(x)
-        x = self.head(x)
-        res = x
+        if self.training: # training mode
+            x = self.sub_mean(x)
+            x = self.head(x)
+            res = x
 
-        outputs = []
-        decisions = []
-        for i, layer in enumerate(self.body):
-            res = layer(res)
-            if i % self.exit_interval == (self.exit_interval-1):
-                output = self.add_mean(self.tail(x + res))
-                decision = self.eedm(res)
-                outputs.append(output)
-                decisions.append(decision)
-                # output.append(self.add_mean(self.tail(x + res)))
+            outputs = []
+            decisions = []
+            for i, layer in enumerate(self.body):
+                res = layer(res)
+                if i % self.exit_interval == (self.exit_interval-1):
+                    output = self.add_mean(self.tail(x + res))
+                    decision = self.eedm(res)
+                    outputs.append(output)
+                    decisions.append(decision)
+                    # output.append(self.add_mean(self.tail(x + res)))
 
-        # x = self.tail(res)
-        # x = self.add_mean(x)
+            # x = self.tail(res)
+            # x = self.add_mean(x)
 
-        return outputs, decisions
+            return outputs, decisions
+        else: # evaluate mode
+            x = self.sub_mean(x)
+            x = self.head(x)
+            res = x
+
+            for i, layer in enumerate(self.body):
+                res = layer(res)
+                if i % self.exit_interval == (self.exit_interval-1):
+                    output = self.add_mean(self.tail(x + res))
+                    decision = self.eedm(res)
+                    if decision >= self.exit_threshold:
+                        return output, i, decision
+            return output, i, decision
+
 
     def load_state_dict(self, state_dict, strict=True):
         own_state = self.state_dict()

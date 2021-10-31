@@ -40,8 +40,8 @@ if __name__ == '__main__':
 
 
     # index_value = np.hstack((iy, ix, value_map.reshape(-1,1)))
-    sort_index = np.argsort(-all_id_iy_ix_metric[:,-1])
-    all_id_iy_ix_metric = all_id_iy_ix_metric[sort_index]
+    sort_index = np.argsort(all_id_iy_ix_metric[:,-1])
+    all_id_iy_ix_metric = all_id_iy_ix_metric[sort_index] # ascending, from easy to hard
 
 
     # save patch index sorted by psnr
@@ -55,6 +55,8 @@ if __name__ == '__main__':
     lr_patch_size = hr_patch_size / scale
     metric = metric / lr_patch_size
     # metric = np.log(metric+1)
+    # hist, bin_edges = np.histogram(metric, bins=32)
+    
     plt.hist(metric, bins=320) 
     plt.title("histogram") 
     plt.xlabel('metric')

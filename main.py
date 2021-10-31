@@ -19,6 +19,10 @@ elif args.meantime:
     from trainer_meantime import Trainer
 elif args.succession:
     from trainer_succession import Trainer
+elif args.match:
+    from trainer_match import Trainer
+elif args.decision:
+    from trainer_decision import Trainer
 else:
     from trainer import Trainer
 import os

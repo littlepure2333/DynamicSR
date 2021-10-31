@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser(description='EDSR and MDSR')
 
 parser.add_argument('--debug', action='store_true', default=False,
                     help='Enables debug mode')
-parser.add_argument('--template', default='EDSR_succession',
+parser.add_argument('--template', default='EDSR_decision',
                     help='You can set various templates in option.py')
 
 # Hardware specifications
@@ -199,6 +199,18 @@ parser.add_argument('--data_part_list', type=tuple, default=('easy_x2_descending
                     help='data part list')
 parser.add_argument('--exit_interval', type=int, default=1,
                     help='every N layers will output an exit')
+parser.add_argument("--match", action="store_true", default=False,
+                    help="match bins with multi-exits")
+parser.add_argument("--bins", type=int, default=320,
+                    help="defines the number of equal-width bins")
+parser.add_argument("--statistics_file", type=str,
+                    help="the dataset statistics file path")
+parser.add_argument("--n_test_samples", type=int, default=20,
+                    help="the number of test samples on every bins")
+parser.add_argument("--decision", action="store_true", default=False,
+                    help='use early-exit decision maker')
+parser.add_argument("--exit_threshold", type=float, default=0.8,
+                    help='early exit decision threshold')
 
 args = parser.parse_args()
 template.set_template(args)
