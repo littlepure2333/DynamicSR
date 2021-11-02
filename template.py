@@ -272,8 +272,8 @@ def set_template(args):
         args.data_train = 'DIV2K'
         args.data_test = 'DIV2K'
         args.scale = "2"
-        args.device = "1"
-        args.n_GPUs = 1
+        args.device = "2,3"
+        args.n_GPUs = 2
         # args.data_range = '1-800/801-803'
         args.batch_size = 16
         args.print_every = 10
@@ -284,7 +284,8 @@ def set_template(args):
         args.exit_interval = 1
         args.conv_thre = 20
         args.freeze = True
-        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_t{}_s{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.conv_thre, args.shared_tail)
+        args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_t{}_s{}_succession_pretrain".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.conv_thre, args.shared_tail)
 
     if args.template.find('EDSR_decision') >= 0:
         args.model = 'EDSR_decision'   ################
@@ -296,13 +297,13 @@ def set_template(args):
         args.patch_size = 192
         args.epochs = 300
         args.dir_data = dir_data
-        args.data_train = 'DIV2K_DYNAMIC'
-        args.data_test = 'DIV2K_DYNAMIC'
+        # args.data_train = 'DIV2K_DYNAMIC' #############
+        # args.data_test = 'DIV2K_DYNAMIC'  #############
         args.scale = "2"   #############
-        args.device = "0,1"  #############
-        args.n_GPUs = 2
+        args.device = "0,1,2,3"  #############
+        args.n_GPUs = 4
         # args.data_range = '1-16/801-802'
-        args.batch_size = 1
+        args.batch_size = 16
         args.print_every = 10
         args.ext = "sep"
         args.reset = True
@@ -310,18 +311,19 @@ def set_template(args):
         args.shared_tail = True
         args.save_results = True
         args.save_gt = True
-        args.exit_interval = 1    ############
-        # args.test_only = True
-        args.bins = 320           ############
-        args.n_test_samples = 50  ############
-        args.exit_threshold = 0.0001 ############
+        args.exit_interval = 4    ############
+        # args.test_only = True     ############
+        args.bins = 32           ############
+        args.n_test_samples = 100  ############
+        args.exit_threshold = 0.55 ###########
         args.statistics_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X2/statistics_Canny_p192_s24.pt"
         # args.statistics_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X3/statistics_Canny_p192_s24.pt"
         # args.statistics_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X4/statistics_Canny_p192_s24.pt"
-        # args.pre_train = "/home/shizun/experiment/20211029_EDSR_dynamic_x2_e300_ps192_lr0.0001_n32_i1_sTrue_sum_pretrain_decision/model/model_best.pt"
-        # args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_s{}_b{}_t{}_th{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.shared_tail, args.bins, args.n_test_samples, args.exit_threshold)
+        # args.pre_train = "/home/shizun/experiment/20211101_EDSR_decision_x2_e300_ps192_lr0.0001_n32_i4_sTrue_sum_pretrain_de2/model/model_best.pt"
+        # args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_s{}_b{}_t{}_th{}_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.shared_tail, args.bins, args.n_test_samples, args.exit_threshold)
+
         args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_s{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.shared_tail)
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_s{}_sum_pretrain_de3".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.shared_tail)
 
     if args.template.find('EDSR_match') >= 0:
         args.model = 'EDSR_dynamic'   ################
@@ -345,15 +347,17 @@ def set_template(args):
         args.reset = True
         args.match = True
         args.shared_tail = True
-        args.exit_interval = 2    ############
+        args.save_results = True  ############
+        args.save_gt = True       ############
+        args.exit_interval = 1    ############
         args.test_only = True
-        args.bins = 320           ############
-        args.n_test_samples = 50  ############
+        args.bins = 96           ############
+        args.n_test_samples = 1  ############
         args.statistics_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X2/statistics_Canny_p192_s24.pt"
         # args.statistics_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X3/statistics_Canny_p192_s24.pt"
         # args.statistics_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X4/statistics_Canny_p192_s24.pt"
-        # args.pre_train = "/home/shizun/experiment/20211021_EDSR_dynamic_x2_e300_ps192_lr0.0001_n32_i1_sTrue_sum_pretrain/model/model_best.pt"
-        args.pre_train = "/home/shizun/experiment/20211022_EDSR_dynamic_x2_e300_ps192_lr0.0001_n32_i2_sTrue_sum_pretrain/model/model_best.pt"
+        args.pre_train = "/home/shizun/experiment/20211021_EDSR_dynamic_x2_e300_ps192_lr0.0001_n32_i1_sTrue_sum_pretrain/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20211022_EDSR_dynamic_x2_e300_ps192_lr0.0001_n32_i2_sTrue_sum_pretrain/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211022_EDSR_dynamic_x2_e300_ps192_lr0.0001_n32_i4_sTrue_sum_pretrain/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211024_EDSR_dynamic_x3_e300_ps192_lr0.0001_n32_i1_sTrue_sum_pretrain/model/model_best.pt"
@@ -362,7 +366,7 @@ def set_template(args):
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x3_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211024_EDSR_dynamic_x4_e300_ps192_lr0.0001_n32_i1_sTrue_sum_pretrain/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211024_EDSR_dynamic_x4_e300_ps192_lr0.0001_n32_i2_sTrue_sum_pretrain/model/model_best.pt"
-        args.save = "{}_{}_match_x{}_e{}_ps{}_lr{}_n{}_i{}_s{}_b{}_t{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.shared_tail, args.bins, args.n_test_samples)
+        args.save = "{}_{}_match1_x{}_e{}_ps{}_lr{}_n{}_i{}_s{}_b{}_t{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.shared_tail, args.bins, args.n_test_samples)
 
     if args.template.find('EDSR_dynamic') >= 0:
         args.model = 'EDSR_dynamic'

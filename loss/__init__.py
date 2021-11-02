@@ -22,7 +22,6 @@ class Loss(nn.modules.loss._Loss):
         self.n_GPUs = args.n_GPUs
         self.loss = []
         self.loss_module = nn.ModuleList()
-        self.de_loss = nn.MSELoss()
         for loss in args.loss.split('+'):
             weight, loss_type = loss.split('*')
             if loss_type == 'MSE':
@@ -70,7 +69,7 @@ class Loss(nn.modules.loss._Loss):
 
         if args.load != '': self.load(ckp.dir, cpu=args.cpu)
 
-    def forward(self, sr, de, hr):
+    def forward(self, sr, hr):
         if self.ohem:
             l = self.loss[0]
             assert l['type'] == 'L1', l['type']
@@ -104,12 +103,7 @@ class Loss(nn.modules.loss._Loss):
             for i, l in enumerate(self.loss):
                 if l['function'] is not None:
                     loss = l['function'](sr, hr)
-                    # de_gt = 1 - F.tanh((sr-hr).pow(2).mean())
-                    mse = (sr-hr).pow(2).mean()
-                    psnr_10 = torch.log10(256*256/mse)
-                    de_gt = torch.sigmoid(psnr_10)
-                    de_loss = self.de_loss(de,de_gt)
-                    effective_loss = l['weight'] * loss + de_loss
+                    effective_loss = l['weight'] * loss
                     losses.append(effective_loss)
                     self.log[-1, i] += effective_loss.item()
                 elif l['type'] == 'DIS':

@@ -16,6 +16,7 @@ class EDSR(nn.Module):
         kernel_size = 3 
         scale = args.scale[0]
         act = nn.ReLU(True)
+        self.test_only = args.test_only
 
         self.exit_interval = args.exit_interval
         self.exit_threshold = args.exit_threshold
@@ -45,7 +46,7 @@ class EDSR(nn.Module):
             nn.AdaptiveAvgPool2d(1),
             nn.Flatten(),
             nn.Linear(n_feats,1),
-            nn.Sigmoid()
+            nn.Tanh()
         ]
         
         self.head = nn.Sequential(*m_head)
@@ -54,7 +55,7 @@ class EDSR(nn.Module):
         self.eedm = nn.Sequential(*m_eedm)
 
     def forward(self, x):
-        if self.training: # training mode
+        if not self.test_only: # training mode / eval mode
             x = self.sub_mean(x)
             x = self.head(x)
             res = x
@@ -74,7 +75,7 @@ class EDSR(nn.Module):
             # x = self.add_mean(x)
 
             return outputs, decisions
-        else: # evaluate mode
+        else: # test mode
             x = self.sub_mean(x)
             x = self.head(x)
             res = x
@@ -85,8 +86,8 @@ class EDSR(nn.Module):
                     output = self.add_mean(self.tail(x + res))
                     decision = self.eedm(res)
                     if decision >= self.exit_threshold:
-                        return output, i, decision
-            return output, i, decision
+                        return output, (i-3)//4, decision
+            return output, (i-3)//4, decision
 
 
     def load_state_dict(self, state_dict, strict=True):

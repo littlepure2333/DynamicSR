@@ -200,8 +200,11 @@ def calc_psnr(sr, hr, scale, rgb_range, dataset=None):
         print(sr)
         print(hr)
         raise ValueError
+    
+    # psnr = -10 * math.log10(mse)
+    psnr = -10 * torch.log10(mse)
 
-    return -10 * math.log10(mse)
+    return psnr
 
 def make_optimizer(args, target):
     '''

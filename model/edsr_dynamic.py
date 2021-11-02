@@ -39,39 +39,25 @@ class EDSR(nn.Module):
             conv(n_feats, args.n_colors, kernel_size)
         ]
 
-        # define early-exiting decision-maker
-        m_eedm = [
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
-            nn.Linear(n_feats,1),
-            nn.Sigmoid()
-        ]
-        
         self.head = nn.Sequential(*m_head)
         self.body = nn.Sequential(*m_body)
         self.tail = nn.Sequential(*m_tail)
-        self.eedm = nn.Sequential(*m_eedm)
 
     def forward(self, x):
         x = self.sub_mean(x)
         x = self.head(x)
         res = x
 
-        outputs = []
-        decisions = []
+        output = []
         for i, layer in enumerate(self.body):
             res = layer(res)
             if i % self.exit_interval == (self.exit_interval-1):
-                output = self.add_mean(self.tail(x + res))
-                decision = self.eedm(res)
-                outputs.append(output)
-                decisions.append(decision)
-                # output.append(self.add_mean(self.tail(x + res)))
+                output.append(self.add_mean(self.tail(x + res)))
 
         # x = self.tail(res)
         # x = self.add_mean(x)
 
-        return outputs, decisions
+        return output
 
     def load_state_dict(self, state_dict, strict=True):
         own_state = self.state_dict()

@@ -7,6 +7,7 @@ import utility
 import warnings
 warnings.filterwarnings("ignore")
 import torch
+import torch.nn as nn
 import torch.nn.utils as utils
 from tqdm import tqdm
 from model.patchnet import PatchNet
@@ -27,6 +28,8 @@ class Trainer():
         self.loss = my_loss
         self.optimizer = utility.make_optimizer(args, self.model)
         self.device = torch.device('cpu' if args.cpu else 'cuda')
+        self.de_loss = nn.MSELoss()
+
 
         if self.args.load != '':
             self.optimizer.load(ckp.dir, epoch=len(ckp.log))
@@ -35,6 +38,14 @@ class Trainer():
 
         if self.args.patchnet:
             self.patchnet = PatchNet(args).to(self.device)
+
+    def gen_de_gt(self, sr, hr):
+        # de1: absolute # legacy
+        mse = (sr-hr).pow(2).mean()
+        psnr_10 = torch.log10(256*256/mse)
+        de_gt = torch.sigmoid(psnr_10)
+
+        return de_gt
 
     def train(self):
         self.loss.step()
@@ -66,9 +77,34 @@ class Trainer():
             sr, decisions = self.model(lr, 0)
             loss = 0
 
-            # sum decision mode
+            # sum decision 'de1' # legacy
+            # for sr_i, de_i in zip(sr, decisions):
+            #     de_i_gt = self.gen_de_gt(sr_i, hr)
+            #     loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i, de_i_gt)
+
+            # sum decision 'de1' # absolute psnr
+            # for sr_i, de_i in zip(sr, decisions):
+            #     now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
+            #     de_i_gt = torch.sigmoid(now_psnr/10) # /10 is for scale
+            #     loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i, de_i_gt)
+
+            # sum decision 'de2' # relative psnr, sigmoid
+            # pre_psnr = 0
+            # for sr_i, de_i in zip(sr, decisions):
+            #     now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
+            #     de_i_gt = torch.sigmoid(torch.tensor(now_psnr - pre_psnr))
+            #     pre_psnr = now_psnr
+            #     loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i, de_i_gt)
+
+            # sum decision 'de3' # relative psnr, tanh
+            pre_psnr = 0
             for sr_i, de_i in zip(sr, decisions):
-                loss += self.loss(sr_i, de_i, hr)
+                now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
+                de_i_gt = 1 - torch.tanh(torch.tensor(now_psnr - pre_psnr))
+                pre_psnr = now_psnr
+                loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i, de_i_gt)
+
+            
             loss.backward()            
 
             if self.args.gclip > 0:
@@ -98,6 +134,97 @@ class Trainer():
     def test(self):
         torch.set_grad_enabled(False)
 
+        epoch = self.optimizer.get_last_epoch()
+        self.ckp.write_log('\nEvaluation:')
+        exit_len = int(self.args.n_resblocks/self.args.exit_interval)
+        self.ckp.add_log(
+            torch.zeros(1, len(self.loader_test), exit_len)
+        )
+        self.model.eval()
+
+        timer_test = utility.timer()
+        if self.args.save_results: self.ckp.begin_background()
+        for idx_data, d in enumerate(self.loader_test):
+            for idx_scale, scale in enumerate(self.scale):
+                d.dataset.set_scale(idx_scale)
+                ssim_total = 0
+                # lpips_vgg_total = 0
+                # lpips_alex_total = 0
+                save_dict = {}
+
+                for lr, hr, filename in tqdm(d, ncols=80):
+                    lr, hr = self.prepare(lr, hr)
+                    sr, decisions = self.model(lr, idx_scale)
+                    for i, sr_i in enumerate(sr):
+                        sr_i = utility.quantize(sr_i, self.args.rgb_range)
+                        save_dict['SR-{}'.format(i)] = sr_i
+                        item_psnr = utility.calc_psnr(sr_i, hr, scale, self.args.rgb_range, dataset=d)
+                        self.ckp.log[-1, idx_data, i] += item_psnr.cpu()
+                    
+                    if self.ssim:
+                        sr_i_np = sr_i.squeeze().cpu().permute(1,2,0).numpy()
+                        hr_np = hr.squeeze().cpu().permute(1,2,0).numpy()
+                        ssim = calculate_ssim(sr_i_np, hr_np)
+                        ssim_total += ssim
+
+                    if self.args.save_gt:
+                        save_dict['LR'] = lr
+                        save_dict['HR'] = hr
+
+                    if self.args.save_results:
+                        self.ckp.save_results_dynamic(d, filename[0], save_dict, scale)
+                    torch.cuda.empty_cache()
+
+                self.ckp.log[-1, idx_data, :] /= len(d)
+
+                best = self.ckp.log.max(0)
+
+                psnr_list = ["{}:{:.3f}".format(i, self.ckp.log[-1, idx_data, i]) for i in range(exit_len)]
+                psnr_list = ','.join(psnr_list)
+
+                self.ckp.write_log(
+                    '[{} x{}]\tPSNR: {})'.format(
+                        d.dataset.name,
+                        scale,
+                        psnr_list
+                    )
+                )
+                self.ckp.write_log(
+                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})'.format(
+                        d.dataset.name,
+                        scale,
+                        self.ckp.log[-1, idx_data, -1],
+                        best[0][idx_data, -1],
+                        best[1][idx_data, -1] + 1
+                    )
+                )
+                if self.ssim:
+                    self.ckp.write_log(
+                        '[{} x{}]\tSSIM: {:.4f}'.format(
+                            d.dataset.name,
+                            scale,
+                            ssim_total/len(d)
+                        )
+                    )
+
+        self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
+        self.ckp.write_log('Saving...')
+
+        if self.args.save_results:
+            self.ckp.end_background()
+
+        if not self.args.test_only:
+            self.ckp.save(self, epoch, is_best=(best[1][0, 0] + 1 == epoch))
+
+        self.ckp.write_log(
+            'Total: {:.2f}s\n'.format(timer_test.toc()), refresh=True
+        )
+
+        torch.set_grad_enabled(True)
+
+    def test_only(self):
+        torch.set_grad_enabled(False)
+
         self.ckp.write_log('\nEvaluation:')
         exit_len = int(self.args.n_resblocks/self.args.exit_interval)
         self.model.eval()
@@ -111,10 +238,11 @@ class Trainer():
         save_dict = {}
 
         for bins_index in range(self.args.bins):
+            self.ckp.write_log("test at [{}/{}] bin".format(bins_index, self.args.bins-1))
             d.dataset.bins_index = bins_index
             runtime_len = self.args.n_test_samples if len(self.loader_test[0].dataset) > self.args.n_test_samples else len(self.loader_test[0].dataset)
             dl = iter(d)
-            for idx_item in tqdm(range(runtime_len), ncols=80):
+            for idx_item in range(runtime_len):
                 lr, hr, filename = dl.next()
                 lr, hr = self.prepare(lr, hr)
 
@@ -141,7 +269,7 @@ class Trainer():
                 torch.cuda.empty_cache()
 
                 self.ckp.write_log(
-                    '[{} x{}]\t[{}]\tPSNR: {:.3f}\t exit at {}/{} de:{:6f})'.format(
+                    '[{} x{}] {}   \tPSNR: {:.3f}\t exit at {}/{}\tde:{:6f})'.format(
                         d.dataset.name,
                         self.scale[0],
                         filename,
@@ -178,7 +306,7 @@ class Trainer():
 
     def terminate(self):
         if self.args.test_only:
-            self.test()
+            self.test_only()
             return True
         else:
             epoch = self.optimizer.get_last_epoch() + 1
