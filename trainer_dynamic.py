@@ -167,11 +167,11 @@ class Trainer():
 
                 for lr, hr, filename in tqdm(d, ncols=80):
                     lr, hr = self.prepare(lr, hr)
-                    sr, decisions = self.model(lr, idx_scale)
+                    sr = self.model(lr, idx_scale)
                     for i, sr_i in enumerate(sr):
                         sr_i = utility.quantize(sr_i, self.args.rgb_range)
                         save_dict['SR-{}'.format(i)] = sr_i
-                        item_psnr = utility.calc_psnr(sr_i, hr, scale, self.args.rgb_range, dataset=d)
+                        item_psnr = utility.calc_psnr(sr_i, hr, scale, self.args.rgb_range, dataset=d).cpu()
                         self.ckp.log[-1, idx_data, i] += item_psnr
                     
                     b,c,h,w = sr_i.size()
@@ -260,6 +260,98 @@ class Trainer():
 
         torch.set_grad_enabled(True)
 
+    def test_only(self):
+        torch.set_grad_enabled(False)
+
+        epoch = self.optimizer.get_last_epoch()
+        self.ckp.write_log('\nEvaluation:')
+        exit_len = int(self.args.n_resblocks/self.args.exit_interval)
+        self.ckp.add_log(
+            torch.zeros(1, len(self.loader_test), exit_len)
+        )
+        self.model.eval()
+
+        timer_test = utility.timer()
+        if self.args.save_results: self.ckp.begin_background()
+        for idx_data, d in enumerate(self.loader_test):
+            for idx_scale, scale in enumerate(self.scale):
+                d.dataset.set_scale(idx_scale)
+                ssim_total = 0
+
+                save_dict = {}
+
+                for lr, hr, filename in tqdm(d, ncols=80):
+                    lr, hr = self.prepare(lr, hr)
+                    sr, decisions = self.model(lr, idx_scale)
+                    for i, sr_i in enumerate(sr):
+                        sr_i = utility.quantize(sr_i, self.args.rgb_range)
+                        save_dict['SR-{}'.format(i)] = sr_i
+                        item_psnr = utility.calc_psnr(sr_i, hr, scale, self.args.rgb_range, dataset=d)
+                        self.ckp.log[-1, idx_data, i] += item_psnr
+                    
+                    b,c,h,w = sr_i.size()
+                    if self.ssim:
+                        sr_i_np = sr_i.squeeze().cpu().permute(1,2,0).numpy()
+                        hr_np = hr.squeeze().cpu().permute(1,2,0).numpy()
+                        ssim = calculate_ssim(sr_i_np, hr_np)
+                        ssim_total += ssim
+
+                    if self.args.save_gt:
+                        save_dict['LR'] = lr
+                        save_dict['HR'] = hr
+
+                    if self.args.save_results:
+                        self.ckp.save_results_dynamic(d, filename[0], save_dict, scale)
+                    torch.cuda.empty_cache()
+
+                self.ckp.log[-1, idx_data, :] /= len(d)
+
+                best = self.ckp.log.max(0)
+
+                psnr_list = ["{}:{:.3f}".format(i, self.ckp.log[-1, idx_data, i]) for i in range(exit_len)]
+                psnr_list = ','.join(psnr_list)
+
+                self.ckp.write_log(
+                    '[{} x{}]\tPSNR: {})'.format(
+                        d.dataset.name,
+                        scale,
+                        psnr_list
+                    )
+                )
+                self.ckp.write_log(
+                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})'.format(
+                        d.dataset.name,
+                        scale,
+                        self.ckp.log[-1, idx_data, -1],
+                        best[0][idx_data, -1],
+                        best[1][idx_data, -1] + 1
+                    )
+                )
+                if self.ssim:
+                    self.ckp.write_log(
+                        '[{} x{}]\tSSIM: {:.4f}'.format(
+                            d.dataset.name,
+                            scale,
+                            ssim_total/len(d)
+                        )
+                    )
+
+        self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
+        self.ckp.write_log('Saving...')
+
+        if self.args.save_results:
+            self.ckp.end_background()
+
+        if not self.args.test_only:
+            self.ckp.save(self, epoch, is_best=(best[1][0, 0] + 1 == epoch))
+
+        self.ckp.write_log(
+            'Total: {:.2f}s\n'.format(timer_test.toc()), refresh=True
+        )
+
+        torch.set_grad_enabled(True)
+
+
     def prepare(self, *args):
         device = torch.device('cpu' if self.args.cpu else 'cuda')
         def _prepare(tensor):
@@ -270,7 +362,7 @@ class Trainer():
 
     def terminate(self):
         if self.args.test_only:
-            self.test()
+            self.test_only()
             return True
         else:
             epoch = self.optimizer.get_last_epoch() + 1
