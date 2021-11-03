@@ -2,6 +2,7 @@ machine  = {"A3":"/data/shizun/dataset/",
             "B3":"/data/shizun/dataset/", 
             "C4":"/data/shizun/dataset/",
             "4gpu-2":"/home/shizun/datasets/image_process/",
+            "4gpu-4":"/data/shizun/",
             "4gpu-5":"/data/shizun/"}
 
 import datetime
