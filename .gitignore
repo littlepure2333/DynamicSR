@@ -15,6 +15,7 @@ model/lib/*.egg-info
 model/lib/*.so
 *.tar.gz
 *.txt
+/temp
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

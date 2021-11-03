@@ -14,8 +14,9 @@ class DIV2K_DYNAMIC(srdata.SRData):
         self.bins = args.bins
         with open(args.statistics_file, 'rb') as _f:
             self.statistics = pickle.load(_f) # all_id_iy_ix_metric
-        self.hist, self.bin_edges = np.histogram(self.statistics[:,-1], bins=self.bins)
-        self.bins_index = 0
+        # self.hist, self.bin_edges = np.histogram(self.statistics[:,-1], bins=self.bins)
+        self.hist = np.array([len(self.statistics)//args.bins for i in range(args.bins)])
+        self.bins_index = 0 if args.bin_index is None else args.bin_index
         if train:
             data_range = data_range[0]
         else:

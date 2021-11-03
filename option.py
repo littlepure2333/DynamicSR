@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser(description='EDSR and MDSR')
 
 parser.add_argument('--debug', action='store_true', default=False,
                     help='Enables debug mode')
-parser.add_argument('--template', default='EDSR_decision',
+parser.add_argument('--template', default='EDSR_dynamic',
                     help='You can set various templates in option.py')
 
 # Hardware specifications
@@ -18,7 +18,7 @@ parser.add_argument('--cpu', action='store_true', default=False,
                     help='use cpu only')
 parser.add_argument('--n_GPUs', type=int, default=1,
                     help='number of GPUs')
-parser.add_argument('--seed', type=int, default=1,
+parser.add_argument('--seed', type=int, default=2,
                     help='random seed')
 
 # Data specifications
@@ -203,6 +203,8 @@ parser.add_argument("--match", action="store_true", default=False,
                     help="match bins with multi-exits")
 parser.add_argument("--bins", type=int, default=320,
                     help="defines the number of equal-width bins")
+parser.add_argument("--bin_index", type=int, default=None,
+                    help="defines start bin index")
 parser.add_argument("--statistics_file", type=str,
                     help="the dataset statistics file path")
 parser.add_argument("--n_test_samples", type=int, default=20,

@@ -67,7 +67,7 @@ class Trainer():
             timer_model.tic()
 
             self.optimizer.zero_grad()
-            sr, decisions = self.model(lr, 0)
+            sr = self.model(lr, 0)
             loss = 0
             # distill mode
             # for i in range(len(sr) - 1):
@@ -102,8 +102,8 @@ class Trainer():
             # loss.backward()
 
             # sum decision mode
-            for sr_i, de_i in zip(sr, decisions):
-                loss += self.loss(sr_i, de_i, hr)
+            for sr_i in sr:
+                loss += self.loss(sr_i, hr)
             loss.backward()
 
             # forward every mode

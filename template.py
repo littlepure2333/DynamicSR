@@ -308,8 +308,8 @@ def set_template(args):
         args.ext = "sep"
         args.reset = True
         args.decision = True
-        args.shared_tail = True
-        args.save_results = True
+        args.shared_tail = True   ############
+        args.save_results = True  ############
         args.save_gt = True
         args.exit_interval = 4    ############
         # args.test_only = True     ############
@@ -377,21 +377,26 @@ def set_template(args):
         args.patch_size = 192
         args.epochs = 300
         args.dir_data = dir_data
+        args.data_train = 'DIV2K_DYNAMIC'
+        args.data_test = 'DIV2K'
         args.scale = "2"
-        args.device = "0,1"
+        args.device = "2,3"
         args.n_GPUs = 2
         # args.data_range = '1-16/801-802'
         args.batch_size = 16
         args.print_every = 10
         args.ext = "sep"
-        args.reset = False
+        args.reset = True
         args.dynamic = True
         args.shared_tail = True
-        args.exit_interval = 1
+        args.exit_interval = 2
+        args.bins = 10
+        args.bin_index = 5
+        args.statistics_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X2/statistics_Canny_p192_s24.pt"
         args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x3_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_s{}_sum_pretrain_decision".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.shared_tail)
+        args.save = "{}_{}_bin{}_x{}_e{}_ps{}_lr{}_n{}_i{}_s{}_b{}_sum_pretrain_decision".format(today, args.model, args.bin_index, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.shared_tail, args.bins)
 
         # resume
         # args.load = "/home/shizun/experiment/20211024_EDSR_dynamic_x4_e300_ps192_lr0.0001_n32_i1_sTrue_sum_pretrain/"
