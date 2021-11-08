@@ -136,7 +136,10 @@ class Trainer():
 
         epoch = self.optimizer.get_last_epoch()
         self.ckp.write_log('\nEvaluation:')
-        exit_len = int(self.args.n_resblocks/self.args.exit_interval)
+        if self.args.model.find("RCAN") >= 0:
+            exit_len = int(self.args.n_resgroups/self.args.exit_interval)
+        else:
+            exit_len = int(self.args.n_resblocks/self.args.exit_interval)
         self.ckp.add_log(
             torch.zeros(1, len(self.loader_test), exit_len)
         )

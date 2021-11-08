@@ -98,6 +98,25 @@ def set_template(args):
         args.lr = 5e-5
         args.decay = '150'
 
+    if args.template.find('FSRCNN') >= 0:
+        args.model = 'FSRCNN'
+
+        args.patch_size = 192
+        args.epochs = 300
+        args.dir_data = dir_data
+        args.data_train = 'DIV2K'
+        args.data_test = 'DIV2K'
+        args.scale = "4"
+        args.device = "3"
+        args.n_GPUs = 1
+        args.batch_size = 16
+        args.print_every = 10
+        args.ext = "sep"
+        args.reset = True
+        # args.chop = True
+        args.save = "{}_{}_paper_x{}_e{}_ps{}_lr{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
+
+
     if args.template.find('RCAN') >= 0:
         args.model = 'RCAN'
         args.n_resgroups = 10
@@ -120,7 +139,7 @@ def set_template(args):
         args.save = "{}_{}_paper_x{}_e{}_ps{}_lr{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
 
     if args.template.find('RCAN_decision') >= 0:
-        args.model = 'RCAN'
+        args.model = 'RCAN_decision'
         args.n_resgroups = 10
         args.n_resblocks = 20
         args.n_feats = 64
@@ -131,8 +150,8 @@ def set_template(args):
         args.data_train = 'DIV2K'
         args.data_test = 'DIV2K'
         args.scale = "2"
-        args.device = "0,1,2,3"
-        args.n_GPUs = 4
+        args.device = "0,1"
+        args.n_GPUs = 2
         args.batch_size = 16
         args.print_every = 10
         args.ext = "sep"
@@ -142,6 +161,7 @@ def set_template(args):
         # args.save_results = True  ############
         # args.save_gt = True      ############
         args.exit_interval = 2    ############
+        args.pre_train = "/home/shizun/experiment/20211105_RCAN_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
         args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_sum_pretrain_de3".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval)
 
     if args.template.find('RDN') >= 0:
