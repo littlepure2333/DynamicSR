@@ -2,6 +2,7 @@ import os
 import math
 from decimal import Decimal
 import numpy as np
+from numpy.lib.function_base import average
 
 import utility
 import warnings
@@ -19,6 +20,8 @@ class Trainer():
         self.args = args
         self.scale = args.scale
         self.ssim = args.ssim
+        self.patch_size = args.patch_size
+        self.step = args.step
         # self.lpips_alex = args.lpips_alex
         # self.lpips_vgg = args.lpips_vgg
         # self.loss_fn_alex = lpips.LPIPS(net='alex')
@@ -267,7 +270,7 @@ class Trainer():
         self.ckp.write_log('\nEvaluation:')
         exit_len = int(self.args.n_resblocks/self.args.exit_interval)
         self.ckp.add_log(
-            torch.zeros(1, len(self.loader_test), exit_len)
+            torch.zeros(1, len(self.loader_test), len(self.scale))
         )
         self.model.eval()
 
@@ -279,21 +282,41 @@ class Trainer():
                 ssim_total = 0
 
                 save_dict = {}
+                psnr_list = []
+                AVG_exit = 0
 
-                for lr, hr, filename in tqdm(d, ncols=80):
-                    lr, hr = self.prepare(lr, hr)
-                    sr, decisions = self.model(lr, idx_scale)
-                    for i, sr_i in enumerate(sr):
-                        sr_i = utility.quantize(sr_i, self.args.rgb_range)
-                        save_dict['SR-{}'.format(i)] = sr_i
-                        item_psnr = utility.calc_psnr(sr_i, hr, scale, self.args.rgb_range, dataset=d)
-                        self.ckp.log[-1, idx_data, i] += item_psnr
-                    
-                    b,c,h,w = sr_i.size()
+                for lr, hr, filename in d:
+                    lr, hr = self.prepare(lr, hr) # (B,C,H,W)
+                    lr_list, num_h, num_w, new_h, new_w = utility.crop(lr, self.patch_size//scale, self.step//scale)
+                    # hr_list = utility.crop_cpu(hr, self.patch_size, self.step)[0]
+
+                    sr_list = []
+                    avg_exit = 0
+
+                    # for lr_patch, hr_patch in zip(lr_list, hr_list):
+                    pbar = tqdm(lr_list, ncols=120)
+                    for lr_patch in pbar:
+                        sr_patch, exit_index, decision = self.model(lr_patch, idx_scale)
+                        pbar.set_description("[{}/{}exit]: {}".format(exit_index, exit_len-1, decision))
+                        # print("[{}/{}exit]: {}".format(exit_index, exit_len, decision))
+                        sr_list.append(sr_patch)
+                        avg_exit += exit_index
+
+                    sr = utility.combine(sr_list, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step)
+                    save_dict['SR'] = sr
+                    hr = hr[:, :, 0:new_h*scale, 0:new_w*scale]
+
+                    item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
+                    self.ckp.log[-1, idx_data, idx_scale] += item_psnr.cpu()
+                    avg_exit = avg_exit / len(pbar)
+                    AVG_exit += avg_exit
+                    print("{}\tPSNR:{:3f}\taverage exit:{}".format(filename, item_psnr, avg_exit))
+                    psnr_list.append(item_psnr)
+
                     if self.ssim:
-                        sr_i_np = sr_i.squeeze().cpu().permute(1,2,0).numpy()
+                        sr_np = sr.squeeze().cpu().permute(1,2,0).numpy()
                         hr_np = hr.squeeze().cpu().permute(1,2,0).numpy()
-                        ssim = calculate_ssim(sr_i_np, hr_np)
+                        ssim = calculate_ssim(sr_np, hr_np)
                         ssim_total += ssim
 
                     if self.args.save_gt:
@@ -307,8 +330,9 @@ class Trainer():
                 self.ckp.log[-1, idx_data, :] /= len(d)
 
                 best = self.ckp.log.max(0)
+                AVG_exit = AVG_exit / len(d)
 
-                psnr_list = ["{}:{:.3f}".format(i, self.ckp.log[-1, idx_data, i]) for i in range(exit_len)]
+                psnr_list = ["{}:{:.3f}".format(i, psnr) for i, psnr in enumerate(psnr_list)]
                 psnr_list = ','.join(psnr_list)
 
                 self.ckp.write_log(
@@ -319,12 +343,14 @@ class Trainer():
                     )
                 )
                 self.ckp.write_log(
-                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})'.format(
+                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})\tThreshold: {}\tAverage exits:{}'.format(
                         d.dataset.name,
                         scale,
                         self.ckp.log[-1, idx_data, -1],
                         best[0][idx_data, -1],
-                        best[1][idx_data, -1] + 1
+                        best[1][idx_data, -1] + 1,
+                        self.args.exit_threshold,
+                        AVG_exit
                     )
                 )
                 if self.ssim:

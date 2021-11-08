@@ -86,8 +86,8 @@ class EDSR(nn.Module):
                     output = self.add_mean(self.tail(x + res))
                     decision = self.eedm(res)
                     if decision >= self.exit_threshold:
-                        return output, (i-3)//4, decision
-            return output, (i-3)//4, decision
+                        return output, (i-(self.exit_interval-1))//self.exit_interval, decision
+            return output, (i-(self.exit_interval-1))//self.exit_interval, decision
 
 
     def load_state_dict(self, state_dict, strict=True):

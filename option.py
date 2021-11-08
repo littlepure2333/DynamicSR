@@ -213,6 +213,8 @@ parser.add_argument("--decision", action="store_true", default=False,
                     help='use early-exit decision maker')
 parser.add_argument("--exit_threshold", type=float, default=0.8,
                     help='early exit decision threshold')
+parser.add_argument("--step", type=int, default=180,
+                    help='split-merge step')
 
 args = parser.parse_args()
 template.set_template(args)
