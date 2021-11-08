@@ -95,10 +95,9 @@ class RCAN(nn.Module):
                 conv, n_feats, kernel_size, reduction, act=act, res_scale=args.res_scale, n_resblocks=n_resblocks) \
             for _ in range(n_resgroups)]
 
-        modules_body.append(conv(n_feats, n_feats, kernel_size))
-
         # define tail module
         modules_tail = [
+            conv(n_feats, n_feats, kernel_size),
             common.Upsampler(conv, scale, n_feats, act=False),
             conv(n_feats, args.n_colors, kernel_size)]
 

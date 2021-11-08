@@ -149,7 +149,7 @@ def set_template(args):
         args.dir_data = dir_data
         args.data_train = 'DIV2K'
         args.data_test = 'DIV2K'
-        args.scale = "2"
+        args.scale = "3"
         args.device = "0,1"
         args.n_GPUs = 2
         args.batch_size = 16
@@ -160,9 +160,11 @@ def set_template(args):
         args.decision = True
         # args.save_results = True  ############
         # args.save_gt = True      ############
-        args.exit_interval = 2    ############
-        args.pre_train = "/home/shizun/experiment/20211105_RCAN_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_sum_pretrain_de3".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval)
+        args.exit_interval = 1    ############
+        # args.pre_train = "/home/shizun/experiment/20211105_RCAN_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
+        args.pre_train = "/home/shizun/experiment/20211105_RCAN_paper_x3_e300_ps192_lr0.0001/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20211105_RCAN_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_sum_pretrain_de3".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resgroups, args.exit_interval)
 
     if args.template.find('RDN') >= 0:
         args.model = 'RDN'
