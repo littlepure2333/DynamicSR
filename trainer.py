@@ -18,10 +18,10 @@ class Trainer():
         self.args = args
         self.scale = args.scale
         self.ssim = args.ssim
-        self.lpips_alex = args.lpips_alex
-        self.lpips_vgg = args.lpips_vgg
-        self.loss_fn_alex = lpips.LPIPS(net='alex')
-        self.loss_fn_vgg = lpips.LPIPS(net='vgg')
+        # self.lpips_alex = args.lpips_alex
+        # self.lpips_vgg = args.lpips_vgg
+        # self.loss_fn_alex = lpips.LPIPS(net='alex')
+        # self.loss_fn_vgg = lpips.LPIPS(net='vgg')
 
         self.ckp = ckp
         self.loader_train = loader.loader_train
@@ -97,6 +97,7 @@ class Trainer():
         self.loss.end_log(len(self.loader_train))
         self.error_last = self.loss.log[-1, -1]
         self.optimizer.schedule()
+        torch.cuda.empty_cache()
 
     def test(self):
         torch.set_grad_enabled(False)
@@ -114,8 +115,8 @@ class Trainer():
             for idx_scale, scale in enumerate(self.scale):
                 d.dataset.set_scale(idx_scale)
                 ssim_total = 0
-                lpips_vgg_total = 0
-                lpips_alex_total = 0
+                # lpips_vgg_total = 0
+                # lpips_alex_total = 0
                 psnr_list = []
 
                 for lr, hr, filename in tqdm(d, ncols=80):
@@ -131,7 +132,7 @@ class Trainer():
                     #     sr, hr, scale, self.args.rgb_range, dataset=d
                     # )
                     item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
-                    self.ckp.log[-1, idx_data, idx_scale] += item_psnr
+                    self.ckp.log[-1, idx_data, idx_scale] += item_psnr.cpu()
                     if self.args.save_psnr_list:
                         psnr_list.append(item_psnr)
                     if self.ssim:
@@ -139,15 +140,15 @@ class Trainer():
                         hr = hr.squeeze().cpu().permute(1,2,0).numpy()
                         ssim = calculate_ssim(sr, hr)
                         ssim_total += ssim
-                    if self.lpips_vgg:
-                        #print('sr',torch.reshape(torch.Tensor(sr),(1,c,h,w)).size())
-                        #print('hr',torch.reshape(torch.Tensor(hr),(1,c,h,w)).size())
-                        lpips_vgg = self.loss_fn_vgg(torch.reshape(torch.Tensor(sr),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
-                        lpips_vgg_total += lpips_vgg
-                    if self.lpips_alex:
-                        lpips_alex = self.loss_fn_alex(torch.reshape(torch.Tensor(sr),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
-                        lpips_alex_total += lpips_alex
-                        #print('alex',lpips_alex_total[0][0][0][0]/len(d),type(lpips_alex_total))
+                    # if self.lpips_vgg:
+                    #     #print('sr',torch.reshape(torch.Tensor(sr),(1,c,h,w)).size())
+                    #     #print('hr',torch.reshape(torch.Tensor(hr),(1,c,h,w)).size())
+                    #     lpips_vgg = self.loss_fn_vgg(torch.reshape(torch.Tensor(sr),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
+                    #     lpips_vgg_total += lpips_vgg
+                    # if self.lpips_alex:
+                    #     lpips_alex = self.loss_fn_alex(torch.reshape(torch.Tensor(sr),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
+                    #     lpips_alex_total += lpips_alex
+                    #     #print('alex',lpips_alex_total[0][0][0][0]/len(d),type(lpips_alex_total))
                     if self.args.save_gt:
                         save_list.extend([lr, hr])
 
@@ -175,22 +176,22 @@ class Trainer():
                             ssim_total/len(d)
                         )
                     )
-                if self.lpips_vgg:
-                     self.ckp.write_log(
-                        '[{} x{}]\tLPIPS-vgg: {:.4f}'.format(
-                            d.dataset.name,
-                            scale,
-                            lpips_vgg_total[0][0][0][0]/len(d)
-                        )
-                    )
-                if self.lpips_alex:
-                     self.ckp.write_log(
-                        '[{} x{}]\tLPIPS-alex: {:.4f}'.format(
-                            d.dataset.name,
-                            scale,
-                            lpips_alex_total[0][0][0][0]/len(d)
-                        )
-                    )
+                # if self.lpips_vgg:
+                #      self.ckp.write_log(
+                #         '[{} x{}]\tLPIPS-vgg: {:.4f}'.format(
+                #             d.dataset.name,
+                #             scale,
+                #             lpips_vgg_total[0][0][0][0]/len(d)
+                #         )
+                #     )
+                # if self.lpips_alex:
+                #      self.ckp.write_log(
+                #         '[{} x{}]\tLPIPS-alex: {:.4f}'.format(
+                #             d.dataset.name,
+                #             scale,
+                #             lpips_alex_total[0][0][0][0]/len(d)
+                #         )
+                #     )
                 if self.args.save_psnr_list:
                     psnr_list_np = np.array(psnr_list)
                     np.save(os.path.join(self.ckp.dir, "psnr_list.pt"), psnr_list_np)
