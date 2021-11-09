@@ -87,16 +87,16 @@ class RCAN(nn.Module):
         self.add_mean = common.MeanShift(args.rgb_range, sign=1)
         
         # define head module
-        modules_head = [conv(args.n_colors, n_feats, kernel_size)]
+        m_head = [conv(args.n_colors, n_feats, kernel_size)]
 
         # define body module
-        modules_body = [
+        m_body = [
             ResidualGroup(
                 conv, n_feats, kernel_size, reduction, act=act, res_scale=args.res_scale, n_resblocks=n_resblocks) \
             for _ in range(n_resgroups)]
 
         # define tail module
-        modules_tail = [
+        m_tail = [
             conv(n_feats, n_feats, kernel_size),
             common.Upsampler(conv, scale, n_feats, act=False),
             conv(n_feats, args.n_colors, kernel_size)]
@@ -109,9 +109,9 @@ class RCAN(nn.Module):
             nn.Tanh()
         ]
 
-        self.head = nn.Sequential(*modules_head)
-        self.body = nn.Sequential(*modules_body)
-        self.tail = nn.Sequential(*modules_tail)
+        self.head = nn.Sequential(*m_head)
+        self.body = nn.Sequential(*m_body)
+        self.tail = nn.Sequential(*m_tail)
         self.eedm = nn.Sequential(*m_eedm)
 
     def forward(self, x):

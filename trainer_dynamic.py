@@ -268,7 +268,12 @@ class Trainer():
 
         epoch = self.optimizer.get_last_epoch()
         self.ckp.write_log('\nEvaluation:')
-        exit_len = int(self.args.n_resblocks/self.args.exit_interval)
+        if self.args.model.find("RCAN") >= 0:
+            exit_len = int(self.args.n_resgroups/self.args.exit_interval)
+        elif self.args.model.find("EDSR") >= 0:
+            exit_len = int(self.args.n_resblocks/self.args.exit_interval)
+        elif self.args.model.find("FSRCNN") >= 0:
+            exit_len = int(4/self.args.exit_interval)
         self.ckp.add_log(
             torch.zeros(1, len(self.loader_test), len(self.scale))
         )
