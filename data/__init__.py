@@ -79,6 +79,10 @@ class Data:
                     module_name = d
                     m = import_module('data.' + module_name.lower())
                     testset = getattr(m, module_name)(args, train=False, name='DIV2K')
+            elif d == 'TEST8K':
+                    module_name = d
+                    m = import_module('data.' + module_name.lower())
+                    testset = getattr(m, module_name)(args, train=False)
             else:
                 module_name = d if d.find('DIV2K-Q') < 0 else 'DIV2KJPEG'
                 m = import_module('data.' + module_name.lower())
@@ -88,7 +92,7 @@ class Data:
                 dataloader.DataLoader(
                     testset,
                     batch_size=1,
-                    shuffle=True,
+                    shuffle=False,
                     pin_memory=not args.cpu,
                     num_workers=args.n_threads,
                 )
