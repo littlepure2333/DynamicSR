@@ -263,7 +263,7 @@ class Trainer():
 
         torch.set_grad_enabled(True)
 
-    def test_only(self):
+    def test_only_dynamic(self):
         torch.set_grad_enabled(False)
 
         epoch = self.optimizer.get_last_epoch()
@@ -285,15 +285,14 @@ class Trainer():
             for idx_scale, scale in enumerate(self.scale):
                 d.dataset.set_scale(idx_scale)
                 ssim_total = 0
-
                 save_dict = {}
                 psnr_list = []
+                exit_list = torch.zeros((1,exit_len))
                 AVG_exit = 0
 
                 for lr, hr, filename in d:
                     lr, hr = self.prepare(lr, hr) # (B,C,H,W)
                     lr_list, num_h, num_w, new_h, new_w = utility.crop(lr, self.patch_size//scale, self.step//scale)
-                    # hr_list = utility.crop_cpu(hr, self.patch_size, self.step)[0]
 
                     sr_list = []
                     avg_exit = 0
@@ -303,8 +302,8 @@ class Trainer():
                     for lr_patch in pbar:
                         sr_patch, exit_index, decision = self.model(lr_patch, idx_scale)
                         pbar.set_description("[{}/{}exit]: {}".format(exit_index, exit_len-1, decision))
-                        # print("[{}/{}exit]: {}".format(exit_index, exit_len, decision))
                         sr_list.append(sr_patch)
+                        exit_list[-1,exit_index] += 1
                         avg_exit += exit_index
 
                     sr = utility.combine(sr_list, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step)
@@ -313,9 +312,118 @@ class Trainer():
 
                     item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
                     self.ckp.log[-1, idx_data, idx_scale] += item_psnr.cpu()
-                    avg_exit = avg_exit / len(pbar)
-                    AVG_exit += avg_exit
-                    print("{}\tPSNR:{:3f}\taverage exit:{}".format(filename, item_psnr, avg_exit))
+                    avg_exit = utility.calc_avg_exit(exit_list[-1])
+                    avg_flops, avg_flops_percent = utility.calc_flops(exit_list[-1], self.args.model, scale, self.args.exit_interval)
+                    self.ckp.write_log("{}\tPSNR:{:.3f}\taverage exit:[{:.2f}/{}]\tFlops:{:.2f}GFlops ({:.2f}%)".format(filename, item_psnr, avg_exit, exit_len-1, avg_flops, avg_flops_percent))
+                    psnr_list.append(item_psnr)
+
+                    if self.ssim:
+                        sr_np = sr.squeeze().cpu().permute(1,2,0).numpy()
+                        hr_np = hr.squeeze().cpu().permute(1,2,0).numpy()
+                        ssim = calculate_ssim(sr_np, hr_np)
+                        ssim_total += ssim
+
+                    if self.args.save_gt:
+                        save_dict['LR'] = lr
+                        save_dict['HR'] = hr
+
+                    if self.args.save_results:
+                        self.ckp.save_results_dynamic(d, filename[0], save_dict, scale)
+                    torch.cuda.empty_cache()
+                    exit_list = torch.cat([exit_list,torch.zeros((1,exit_len))])
+
+                self.ckp.log[-1, idx_data, :] /= len(d)
+
+                best = self.ckp.log.max(0)
+                AVG_exit = utility.calc_avg_exit(exit_list)
+                AVG_flops, AVG_flops_percent = utility.calc_flops(exit_list, self.args.model, scale, self.args.exit_interval)
+                    
+                psnr_list = ["{}:{:.3f}".format(i, psnr) for i, psnr in enumerate(psnr_list)]
+                psnr_list = ','.join(psnr_list)
+
+                self.ckp.write_log(
+                    '[{} x{}]\tPSNR: {})'.format(
+                        d.dataset.name,
+                        scale,
+                        psnr_list
+                    )
+                )
+                self.ckp.write_log(
+                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})\tThreshold: {}\tAverage exits:[{:.2f}/{}]\tFlops:{:.2f}GFlops ({:.2f}%)'.format(
+                        d.dataset.name,
+                        scale,
+                        self.ckp.log[-1, idx_data, -1],
+                        best[0][idx_data, -1],
+                        best[1][idx_data, -1] + 1,
+                        self.args.exit_threshold,
+                        AVG_exit,
+                        exit_len-1,
+                        AVG_flops,
+                        AVG_flops_percent
+                    )
+                )
+                if self.ssim:
+                    self.ckp.write_log(
+                        '[{} x{}]\tSSIM: {:.4f}'.format(
+                            d.dataset.name,
+                            scale,
+                            ssim_total/len(d)
+                        )
+                    )
+
+        self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
+        self.ckp.write_log('Saving...')
+
+        if self.args.save_results:
+            self.ckp.end_background()
+
+        if not self.args.test_only:
+            self.ckp.save(self, epoch, is_best=(best[1][0, 0] + 1 == epoch))
+
+        self.ckp.save_exit_list(exit_list)
+
+        self.ckp.write_log(
+            'Total: {:.2f}s\n'.format(timer_test.toc()), refresh=True
+        )
+
+        torch.set_grad_enabled(True)
+
+    def test_only_static(self):
+        torch.set_grad_enabled(False)
+
+        epoch = self.optimizer.get_last_epoch()
+        self.ckp.write_log('\nEvaluation:')
+        self.ckp.add_log(
+            torch.zeros(1, len(self.loader_test), len(self.scale))
+        )
+        self.model.eval()
+
+        timer_test = utility.timer()
+        if self.args.save_results: self.ckp.begin_background()
+        for idx_data, d in enumerate(self.loader_test):
+            for idx_scale, scale in enumerate(self.scale):
+                d.dataset.set_scale(idx_scale)
+                ssim_total = 0
+                save_dict = {}
+                psnr_list = []
+
+                for lr, hr, filename in d:
+                    lr, hr = self.prepare(lr, hr) # (B,C,H,W)
+                    lr_list, num_h, num_w, new_h, new_w = utility.crop_parallel(lr, self.patch_size//scale, self.step//scale)
+                    sr_list = torch.Tensor()
+
+                    pbar = tqdm(range(len(lr_list)//self.args.n_parallel + 1), ncols=120)
+                    for lr_patch_index in pbar:
+                        sr_patches = self.model(lr_list[lr_patch_index*self.args.n_parallel:(lr_patch_index+1)*self.args.n_parallel], idx_scale)
+                        sr_list = torch.cat([sr_list, sr_patches.cpu()])
+
+                    sr = utility.combine(sr_list, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step)
+                    save_dict['SR'] = sr
+                    hr = hr[:, :, 0:new_h*scale, 0:new_w*scale].cpu()
+
+                    item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
+                    self.ckp.log[-1, idx_data, idx_scale] += item_psnr.cpu()
+                    self.ckp.write_log("{}\tPSNR:{:3f}".format(filename, item_psnr))
                     psnr_list.append(item_psnr)
 
                     if self.ssim:
@@ -333,9 +441,7 @@ class Trainer():
                     torch.cuda.empty_cache()
 
                 self.ckp.log[-1, idx_data, :] /= len(d)
-
                 best = self.ckp.log.max(0)
-                AVG_exit = AVG_exit / len(d)
 
                 psnr_list = ["{}:{:.3f}".format(i, psnr) for i, psnr in enumerate(psnr_list)]
                 psnr_list = ','.join(psnr_list)
@@ -348,14 +454,12 @@ class Trainer():
                     )
                 )
                 self.ckp.write_log(
-                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})\tThreshold: {}\tAverage exits:{}'.format(
+                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})'.format(
                         d.dataset.name,
                         scale,
                         self.ckp.log[-1, idx_data, -1],
                         best[0][idx_data, -1],
-                        best[1][idx_data, -1] + 1,
-                        self.args.exit_threshold,
-                        AVG_exit
+                        best[1][idx_data, -1] + 1
                     )
                 )
                 if self.ssim:
@@ -393,8 +497,12 @@ class Trainer():
 
     def terminate(self):
         if self.args.test_only:
-            self.test_only()
+            if self.args.model in ['EDSR', 'RCAN', 'FSRCNN']:
+                self.test_only_static()
+            elif self.args.model in ['EDSR_decision', 'RCAN_decision', 'FSRCNN_decision']:
+                self.test_only_dynamic()
             return True
+
         else:
             epoch = self.optimizer.get_last_epoch() + 1
             return epoch >= self.args.epochs

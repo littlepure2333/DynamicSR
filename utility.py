@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 import imageio
+import pickle
 
 import torch
 import torch.optim as optim
@@ -90,6 +91,10 @@ class checkpoint():
         self.plot_psnr(epoch)
         trainer.optimizer.save(self.dir)
         torch.save(self.log, self.get_path('psnr_log.pt'))
+
+    def save_exit_list(self, exit_list):
+        with open(self.get_path('exit_list.pt'), 'wb') as _f:
+            pickle.dump(exit_list, _f)
 
     def add_log(self, log):
         self.log = torch.cat([self.log, log])
@@ -312,6 +317,82 @@ def combine(sr_list, num_h, num_w, h, w, patch_size, step):
         sr_img[:, :, i*step:i*step+(patch_size-step), :]/=2
 
     return sr_img
+
+def crop_parallel(img, crop_sz, step):
+    b, c, h, w = img.shape
+    h_space = np.arange(0, h - crop_sz + 1, step)
+    w_space = np.arange(0, w - crop_sz + 1, step)
+    index = 0
+    num_h = 0
+    lr_list=torch.Tensor().to(img.device)
+    for x in h_space:
+        num_h += 1
+        num_w = 0
+        for y in w_space:
+            num_w += 1
+            index += 1
+            crop_img = img[:, :, x:x + crop_sz, y:y + crop_sz]
+            lr_list = torch.cat([lr_list, crop_img])
+    new_h=x + crop_sz # new height after crop
+    new_w=y + crop_sz # new width  after crop
+    return lr_list, num_h, num_w, new_h, new_w
+
+def combine_parallel(sr_list, num_h, num_w, h, w, patch_size, step):
+    index=0
+    sr_img = torch.zeros((1, 3, h, w)).to(sr_list.device)
+    for i in range(num_h):
+        for j in range(num_w):
+            sr_img[:, :, i*step:i*step+patch_size, j*step:j*step+patch_size] += sr_list[index]
+            index+=1
+
+    # mean the overlap region
+    for j in range(1,num_w):
+        sr_img[:, :, :, j*step:j*step+(patch_size-step)]/=2
+    for i in range(1,num_h):
+        sr_img[:, :, i*step:i*step+(patch_size-step), :]/=2
+
+    return sr_img
+
+def calc_avg_exit(exit_list):
+    if exit_list.ndim == 2:
+        exit_list = exit_list.sum(0)
+    num = exit_list.sum()
+    index = torch.arange(0,len(exit_list),1)
+    avg = (index*exit_list).sum() / num
+
+    return avg
+
+def calc_flops(exit_list, model_name, scale, exit_interval):
+    
+    if exit_list.ndim == 2:
+        exit_list = exit_list.sum(0)
+    
+    if model_name.find("EDSR") >= 0:
+        if scale == 2:
+            flops_list = torch.Tensor([4.27,5.47,6.68,7.89,9.10,10.31,11.52,12.72,13.93,15.14,16.35,17.56,18.77,19.98,21.18,22.39,23.60,24.81,26.02,27.23,28.44,29.64,30.85,32.06,33.27,34.48,35.69,36.89,38.10,39.31,40.52,41.73])
+            flops_list = flops_list[exit_interval-1::exit_interval]
+        elif scale == 3:
+            flops_list = torch.Tensor([7.32,8.53,9.74,10.95,12.16,13.36,14.57,15.78,16.99,18.20,19.41,20.62,21.82,23.03,24.24,25.45,26.66,27.87,29.07,30.28,31.49,32.70,33.91,35.12,36.33,37.53,38.74,39.95,41.16,42.37,43.58,44.79])
+            flops_list = flops_list[exit_interval-1::exit_interval]
+        elif scale == 4:
+            flops_list = torch.Tensor([14.02,15.23,16.44,17.64,18.85,20.06,21.27,22.48,23.69,24.89,26.10,27.31,28.52,29.73,30.94,32.15,33.35,34.56,35.77,36.98,38.19,39.40,40.61,41.81,43.02,44.23,45.44,46.65,47.86,49.06,50.27,51.48])
+            flops_list = flops_list[exit_interval-1::exit_interval]
+    elif model_name.find("RCAN") >= 0:
+        if scale == 2:
+            flops_list = torch.Tensor([1.75,3.30,4.85,6.41,7.96,9.51,11.06,12.61,14.16,15.72])
+            flops_list = flops_list[exit_interval-1::exit_interval]
+        elif scale == 3:
+            flops_list = torch.Tensor([1.95,3.50,5.05,6.60,8.16,9.71,11.26,12.81,14.36,15.91])
+            flops_list = flops_list[exit_interval-1::exit_interval]
+        elif scale == 4:
+            flops_list = torch.Tensor([2.38,3.93,5.48,7.03,8.58,10.13,11.69,13.24,14.79,16.34])
+            flops_list = flops_list[exit_interval-1::exit_interval]
+
+    num = exit_list.sum()
+    flops = (flops_list*exit_list).sum() / num
+    percent = flops / flops_list[-1] * 100.0
+
+    return flops, percent
 
 
 if __name__ == "__main__":

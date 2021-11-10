@@ -1,102 +1,140 @@
-import numpy as np
-import torch
-import torch.nn as nn
-import torchvision
-import torchvision.models as models
-from torch.autograd import Variable
+from torchstat import stat
+from option import args # modify default template in option.py
+
+# edsr_decision
+# from model.edsr_decision import make_model
+# args.model = 'EDSR_decision'
+# args.n_resblocks = 32
+# args.n_feats = 256
+# args.res_scale = 0.1
+# args.scale = [3]
+
+# edsr
+# from model.edsr import make_model
+# args.model = 'EDSR'
+# args.n_resblocks = 32
+# args.n_feats = 256
+# args.res_scale = 0.1
+# args.scale = [4]
+
+# rcan_decision
+# from model.rcan_decision import make_model
+# args.model = 'RCAN_decision'
+# args.n_resgroups = 10
+# args.n_resblocks = 20
+# args.n_feats = 64
+# args.scale = [2]
+
+# rcan
+# from model.rcan import make_model
+# args.model = 'RCAN'
+# args.n_resgroups = 10
+# args.n_resblocks = 20
+# args.n_feats = 64
+# args.scale = [3]
+
+# fsrcnn_decision
+from model.fsrcnn_decision import make_model
+args.model = 'fsrcnn_decision'
+args.scale = [3]
+
+# fsrcnn
+# from model.fsrcnn import make_model
+# args.model = 'fsrcnn'
+# args.scale = [2]
 
 
-def print_model_parm_flops(one_shot_model):
-    prods = {}
-    
-    def save_hook(name):
-        def hook_per(self, input, output):
-            prods[name] = np.prod(input[0].shape)
+m = make_model(args)
+stat(m, (3, 32, 32))
+# print(m)
 
-        return hook_per
 
-    list_1 = []
+'''
+EDSR x2: (3,32,32)
+    head: 7,401,472
+    body: 38,671,745,024 = 32 * 1,208,483,840
+    tail: 3,049,533,440
+    eedm: 256
+    total:41,728,679,936 (41.73GFlops)
+(4.27,5.47,6.68,7.89,9.10,10.31,11.52,12.72,13.93,15.14,16.35,17.56,18.77,19.98,21.18,22.39,23.60,24.81,26.02,27.23,28.44,29.64,30.85,32.06,33.27,34.48,35.69,36.89,38.10,39.31,40.52,41.73)
 
-    def simple_hook(self, input, output):
-        list_1.append(np.prod(input[0].shape))
+EDSR x3: (3,32,32)
+    head: 7,462,912
+    body: 38,671,745,024 = 32 * 1,208,483,840
+    tail: 6,106,147,840
+    eedm: 256
+    total:44,785,355,776 (44.79GFlops)
+(7.32,8.53,9.74,10.95,12.16,13.36,14.57,15.78,16.99,18.20,19.41,20.62,21.82,23.03,24.24,25.45,26.66,27.87,29.07,30.28,31.49,32.70,33.91,35.12,36.33,37.53,38.74,39.95,41.16,42.37,43.58,44.79)
 
-    list_2 = {}
+EDSR x4: (3,32,32)
+    head: 7,548,928
+    body: 38,671,745,024 = 32 * 1,208,483,840
+    tail: 12,802,375,680
+    eedm: 256
+    total:51,481,669,888.0 (51.48GFlops)
+(14.02,15.23,16.44,17.64,18.85,20.06,21.27,22.48,23.69,24.89,26.10,27.31,28.52,29.73,30.94,32.15,33.35,34.56,35.77,36.98,38.19,39.40,40.61,41.81,43.02,44.23,45.44,46.65,47.86,49.06,50.27,51.48)
+'''
 
-    def simple_hook2(self, input, output):
-        list_2['names'] = np.prod(input[0].shape)
+'''
+RCAN x2: (3,32,32)
+    head: 3,631,104
+    body: 15,515,340,864 = 10 * 1,551,534,086 
+    tail: 196,161,536
+    eedm: 64
+    total:15,715,133,504 (15.72GFlops)
+[1.75,3.30,4.85,6.41,7.96,9.51,11.06,12.61,14.16,15.72]
 
-    multiply_adds = False
-    list_conv = []
+RCAN x3: (3,32,32)
+    head: 3,723,264
+    body: 15,515,340,864 = 10 * 1,551,534,086
+    tail: 394,095,616
+    eedm: 64
+    total:15,913,129,024 (15.91GFlops)
+[1.95,3.50,5.05,6.60,8.16,9.71,11.26,12.81,14.36,15.91]
 
-    def conv_hook(self, input, output):
-        batch_size, input_channels, input_height, input_width = input[0].size()
-        output_channels, output_height, output_width = output[0].size()
+RCAN x4: (3,32,32)
+    head: 2,043,904
+    body: 15,515,340,864 = 10 * 1,551,534,086
+    tail: 822,460,416
+    eedm: 64
+    total:16,341,579,840 (16.34GFlops)
+[2.38,3.93,5.48,7.03,8.58,10.13,11.69,13.24,14.79,16.34]
+'''
 
-        kernel_ops = self.kernel_size[0] * self.kernel_size[1] * (self.in_channels / self.groups) * (
-            2 if multiply_adds else 1)
-        bias_ops = 1 if self.bias is not None else 0
+'''
+FSRCNN x2: (3,32,32)
+    head: 5,058,560
+    body: 5,357,568 = 4 * 1,339,392
+    tail: 745,472
+    eedm: 12
+    total:11,161,600 (11.16MFlops)
 
-        params = output_channels * (kernel_ops + bias_ops)
-        flops = batch_size * params * output_height * output_width
 
-        list_conv.append(flops)
+FSRCNN x3: (3,32,32)
+    head: 
+    body: 
+    tail: 
+    eedm: 
+    total:
 
-    list_linear = []
 
-    def linear_hook(self, input, output):
-        batch_size = input[0].size(0) if input[0].dim() == 2 else 1
+FSRCNN x4: (3,32,32)
+    head: 
+    body: 
+    tail: 
+    eedm: 
+    total:
 
-        weight_ops = self.weight.nelement() * (2 if multiply_adds else 1)
-        bias_ops = self.bias.nelement()
 
-        flops = batch_size * (weight_ops + bias_ops)
-        list_linear.append(flops)
+'''
 
-    list_bn = []
 
-    def bn_hook(self, input, output):
-        list_bn.append(input[0].nelement())
 
-    list_relu = []
+print(4300800+57344+688128+12288)
+print(688128+57344)
 
-    def relu_hook(self, input, output):
-        list_relu.append(input[0].nelement())
 
-    list_pooling = []
+# for i in range(10):
+#     b = 2043904+822460416+64+(i+1)*1551534086
+#     print("{:.2f}".format(b/1000000000.0))
 
-    def pooling_hook(self, input, output):
-        batch_size, input_channels, input_height, input_width = input[0].size()
-        output_channels, output_height, output_width = output[0].size()
-
-        kernel_ops = self.kernel_size * self.kernel_size
-        bias_ops = 0
-        params = output_channels * (kernel_ops + bias_ops)
-        flops = batch_size * params * output_height * output_width
-
-        list_pooling.append(flops)
-
-    def foo(net):
-        childrens = list(net.children())
-        if not childrens:
-            if isinstance(net, torch.nn.Conv2d):
-                net.register_forward_hook(conv_hook)
-            if isinstance(net, torch.nn.Linear):
-                net.register_forward_hook(linear_hook)
-            if isinstance(net, torch.nn.BatchNorm2d):
-                net.register_forward_hook(bn_hook)
-            if isinstance(net, torch.nn.ReLU):
-                net.register_forward_hook(relu_hook)
-            if isinstance(net, torch.nn.MaxPool2d) or isinstance(net, torch.nn.AvgPool2d):
-                net.register_forward_hook(pooling_hook)
-            return
-        for c in childrens:
-            foo(c)
-
-    foo(one_shot_model)
-    x = torch.rand(3, 256, 256).unsqueeze(0).cuda()
-    krl = torch.rand(21,1).view(-1).unsqueeze(0).cuda()
-    out = one_shot_model(x, krl)
-    total_flops = (sum(list_conv) + sum(list_linear) + sum(list_bn) + sum(list_relu) + sum(list_pooling))
-    M_flops = total_flops / 1e6
-    print('  + Number of FLOPs: %.2fM' % (M_flops))
-    return M_flops

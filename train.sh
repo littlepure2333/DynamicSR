@@ -1,10 +1,24 @@
-CUDA_VISIBLE_DEVICES=3 python main.py --model maskedsr --patch_size 96 --save 20200617_maskedsr_baseline_x3_s10_w20 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
-#CUDA_VISIBLE_DEVICES=2 python main.py --model adaedsr --patch_size 96 --save 20200612_adaedsr_baseline_x4_s100 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300 --loss 1*L1
-#CUDA_VISIBLE_DEVICES=0 python main.py --model adaedsr --patch_size 96 --save 20200613_adaedsr_baseline_x2 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300 --loss 1*L1 --pre_train result/20200612_adaedsr_baseline_x2_s100/model/model_latest.pt
-#CUDA_VISIBLE_DEVICES=0 python main.py --model maskedsr --patch_size 96 --save 20200604_maskedsr_baseline_x2_s70_w01 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
-#CUDA_VISIBLE_DEVICES=0 python main.py --model maskedsr --patch_size 96 --save 20200604_maskedsr_baseline_x2_s70_w01 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
-#CUDA_VISIBLE_DEVICES=0 python main.py --model maskedsr --patch_size 96 --save 20200604_maskedsr_baseline_x2_s70_w01 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
-#CUDA_VISIBLE_DEVICES=3 python main.py --model maskedsr --patch_size 96 --save 20200602_maskedsr_baseline_x2_s50_w10_pre --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300 --pre_train result/20200601_edsr_baseline_x2/model/model_latest.pt
-#CUDA_VISIBLE_DEVICES=2 python main.py --model maskedsr --patch_size 96 --save 20200602_maskedsr_baseline_x2_s50_w10 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
-#CUDA_VISIBLE_DEVICES=2 python main.py --model maskedsr --patch_size 96 --save 20200602_maskedsr_baseline_x2_s50_w10 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
-#CUDA_VISIBLE_DEVICES=2 python main.py --model maskedsr --patch_size 96 --save 20200602_maskedsr_baseline_x2_s50_w10 --reset --ext sep --n_GPUs 1 --n_colors 3 --decay 200 --epochs 300
+python main.py --template RCAN_test --data_test TEST8K --scale 4 --device 0 \
+--pre_train /home/shizun/experiment/20211105_RCAN_paper_x4_e300_ps192_lr0.0001/model/model_best.pt
+
+python main.py --template RCAN_test --data_test DIV2K --scale 2 --device 0 \
+--pre_train /home/shizun/experiment/20211105_RCAN_paper_x2_e300_ps192_lr0.0001/model/model_best.pt
+
+python main.py --template RCAN_test --data_test DIV2K --scale 3 --device 0 \
+--pre_train /home/shizun/experiment/20211105_RCAN_paper_x3_e300_ps192_lr0.0001/model/model_best.pt
+
+python main.py --template RCAN_test --data_test DIV2K --scale 4 --device 0 \
+--pre_train /home/shizun/experiment/20211105_RCAN_paper_x4_e300_ps192_lr0.0001/model/model_best.pt
+
+# python main.py --template EDSR_test --data_test TEST8K --scale 4 --device 3 \
+# --pre_train /home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt
+
+# python main.py --template EDSR_test --data_test DIV2K --scale 2 --device 3 \
+# --pre_train /home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt
+
+# python main.py --template EDSR_test --data_test DIV2K --scale 3 --device 3 \
+# --pre_train /home/shizun/experiment/20211023_EDSR_paper_x3_e300_ps192_lr0.0001/model/model_best.pt
+
+# python main.py --template EDSR_test --data_test DIV2K --scale 4 --device 3 \
+# --pre_train /home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt
+
