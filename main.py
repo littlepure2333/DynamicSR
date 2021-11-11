@@ -23,6 +23,8 @@ elif args.match:
     from trainer_match import Trainer
 elif args.decision:
     from trainer_decision import Trainer
+elif args.ada:
+    from trainer_ada import Trainer
 else:
     from trainer import Trainer
 import os

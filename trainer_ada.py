@@ -1,173 +1,195 @@
 import os
 import math
-import random
-import time
-import utility
-import torch
-import torch.nn.functional as F
-import torch.nn.utils as utils
-import augments
-from tqdm import tqdm
 from decimal import Decimal
+import numpy as np
 
+import utility
 
-class Trainer:
-    def __init__(self, args, my_loader, my_model, my_loss, ckp):
-        """init function"""
+import torch
+import torch.nn.utils as utils
+from tqdm import tqdm
+from model.patchnet import PatchNet
+import lpips
+
+from data.utils_image import calculate_ssim
+
+class Trainer():
+    def __init__(self, args, loader, my_model, my_loss, ckp):
         self.args = args
-        self.scale = args.scale  # [x2, x3, x4, x5, x6 ...]
-        self.idx_scale = 0
+        self.scale = args.scale
+        self.ssim = args.ssim
+        # self.lpips_alex = args.lpips_alex
+        # self.lpips_vgg = args.lpips_vgg
+        # self.loss_fn_alex = lpips.LPIPS(net='alex')
+        # self.loss_fn_vgg = lpips.LPIPS(net='vgg')
+
         self.ckp = ckp
-        self.loader_train = my_loader.loader_train
-        self.loader_test = my_loader.loader_test
+        self.loader_train = loader.loader_train
+        self.loader_test = loader.loader_test
         self.model = my_model
         self.loss = my_loss
         self.optimizer = utility.make_optimizer(args, self.model)
+        self.device = torch.device('cpu' if args.cpu else 'cuda')
 
         if self.args.load != '':
             self.optimizer.load(ckp.dir, epoch=len(ckp.log))
 
         self.error_last = 1e8
 
+        if self.args.patchnet:
+            self.patchnet = PatchNet(args).to(self.device)
+
     def train(self):
-        """training function"""
         self.loss.step()
         epoch = self.optimizer.get_last_epoch() + 1
         lr = self.optimizer.get_lr()
-        self.ckp.write_log('[Epoch {}]\tLearning rate: {:.2e}'.format(epoch, Decimal(lr)))
+
+        self.ckp.write_log(
+            '[Epoch {}]\tLearning rate: {:.2e}'.format(epoch, Decimal(lr))
+        )
         self.loss.start_log()
         self.model.train()
-        timer_data, timer_model = utility.timer(), utility.timer()
 
-        for batch, (lr, hr, krl, _) in enumerate(self.loader_train):
-            lr, hr, krl = self.prepare_train(lr, hr, krl)
+        if self.args.final_data_partion != None and self.args.final_data_partion <= 1:
+            total_epochs = self.args.epochs
+            increment = (self.args.final_data_partion - self.args.data_partion) * (epoch - 1) / (total_epochs - 1)
+            new_data_partion = self.args.data_partion + increment
+            self.loader_train.dataset.datasets[0].set_data_partion(new_data_partion)
+            self.ckp.write_log("current data_partion is: {}".format(new_data_partion))
+            
+        timer_data, timer_model = utility.timer(), utility.timer()
+        # TEMP
+        self.loader_train.dataset.set_scale(0)
+        for batch, (lr, hr, _,) in enumerate(self.loader_train):
+            lr, hr = self.prepare(lr, hr)
             timer_data.hold()
             timer_model.tic()
+
             self.optimizer.zero_grad()
-            loss = 0
-
-            # iterate all scales
-            # for self.idx_scale in range(len(self.scale)):
-            #     key = str(self.scale[self.idx_scale])
-            #     lr_, hr_, krl_ = lr[key], hr[key], krl[key]  # lr, hr, krl is dict
-            #     sr_ = self.model(lr_, self.idx_scale, krl=krl_)  # (lr, idx_scale, krl)
-            #     loss += self.loss(sr_, hr_)
-            # loss /= len(self.scale)
-
-            # choose a random scale
-            self.idx_scale = random.randint(0, len(self.scale) - 1)
-            key = str(self.idx_scale)
-            lr_, hr_, krl_ = lr[key], hr[key], krl[key]
-            # lr_, hr_, krl_ = lr, hr, krl
-
-            # adaptive
-            meta_ = {'masks': []}
-            sr_, pred_, depth_ = self.model(lr_, self.idx_scale, krl=krl_, meta=meta_)
-            loss_l1, _ = self.loss(sr_, hr_, meta_)
-            loss_pred = 0.01 * (pred_.mean((2, 3)) - depth_).clamp_min_(0).mean()
-            loss = loss_l1 + loss_pred
-            cost_perc = pred_.sum() / (self.args.n_resblocks * pred_.size(0) * pred_.size(2) * pred_.size(3))
-
-            # backward
+            sr, pred, depth = self.model(lr, 0)
+            pred_loss = (pred.mean((2,3)) - depth).clamp_min_(0).mean()
+            loss = self.loss(sr, hr) + self.args.lambda_pred * pred_loss
             loss.backward()
-
-            # clip gradient
             if self.args.gclip > 0:
-                utils.clip_grad_value_(self.model.parameters(), self.args.gclip)
-
+                utils.clip_grad_value_(
+                    self.model.parameters(),
+                    self.args.gclip
+                )
             self.optimizer.step()
+
             timer_model.hold()
 
             if (batch + 1) % self.args.print_every == 0:
-                self.ckp.write_log('[{}/{}]\t{}\t{:.1f}+{:.1f}s\t{}\t{}\t{}'.format(
+                self.ckp.write_log('[{}/{}]\t{}\t{:.1f}+{:.1f}s'.format(
                     (batch + 1) * self.args.batch_size,
                     len(self.loader_train.dataset),
                     self.loss.display_loss(batch),
                     timer_model.release(),
-                    timer_data.release(),
-                    self.idx_scale,
-                    cost_perc,
-                    loss_pred.item()))
+                    timer_data.release()))
 
             timer_data.tic()
 
         self.loss.end_log(len(self.loader_train))
         self.error_last = self.loss.log[-1, -1]
         self.optimizer.schedule()
+        torch.cuda.empty_cache()
 
     def test(self):
-        """testing function"""
         torch.set_grad_enabled(False)
-        epoch = self.optimizer.get_last_epoch()  # epoch
+
+        epoch = self.optimizer.get_last_epoch()
         self.ckp.write_log('\nEvaluation:')
-        self.ckp.add_log(torch.zeros(1, len(self.loader_test), len(self.scale)))  # (1, #num, #scale)
-        log_ssim = torch.zeros(1, len(self.loader_test), len(self.scale))  # (1,#num, #scale)
-        log_perc = torch.zeros(1, len(self.loader_test), len(self.scale))  # (1,#num, #scale)
-
+        self.ckp.add_log(
+            torch.zeros(1, len(self.loader_test), len(self.scale))
+        )
         self.model.eval()
+
         timer_test = utility.timer()
-
-        if self.args.save_results:
-            self.ckp.begin_background()
-
+        if self.args.save_results: self.ckp.begin_background()
         for idx_data, d in enumerate(self.loader_test):
             for idx_scale, scale in enumerate(self.scale):
-
                 d.dataset.set_scale(idx_scale)
+                ssim_total = 0
+                # lpips_vgg_total = 0
+                # lpips_alex_total = 0
+                psnr_list = []
 
-                for lr, hr, krl, filename in tqdm(d, ncols=80):
-                    lr, hr, krl = self.prepare_test(lr, hr, krl)
-
-                    # cutblur
-                    # meta = {'masks': [], 'gumbel_temp': 1.0, 'gumbel_noise': False, 'epoch': epoch}
-                    # lr = F.interpolate(lr, scale_factor=self.scale[self.idx_scale], mode='nearest')
-                    # sr, meta = self.model(lr, idx_scale, krl=krl, meta=meta)
-                    # _, meta = self.loss(sr, hr, meta)
-
-                    # adaptive
-                    meta = {'masks': []}
-                    sr, pred, depth = self.model(lr, self.idx_scale, krl=krl, meta=meta)
-                    print(depth)
-                    # loss_l1, _ = self.loss(sr, hr, meta)
-                    cost_perc = pred.sum() / (self.args.n_resblocks * pred.size(0) * pred.size(2) * pred.size(3))
-                    print(pred)
-                    print(cost_perc)
-                    exit(0)
+                for lr, hr, filename in tqdm(d, ncols=80):
+                    lr, hr = self.prepare(lr, hr)
+                    sr, pred, depth = self.model(lr, idx_scale)
                     sr = utility.quantize(sr, self.args.rgb_range)
+                    #print('sr',sr.size())
+                    #print('hr',hr.size())
+                    b,c,h,w = sr.size()
+
                     save_list = [sr]
-                    self.ckp.log[-1, idx_data, idx_scale] += utility.calc_psnr(
-                        sr, hr, scale, self.args.rgb_range,
-                        # dataset=d
-                    )
-
-                    log_ssim[-1, idx_data, idx_scale] += utility.calc_ssim(
-                        sr, hr, scale, benchmark=d.dataset.benchmark
-                    )
-
-                    log_perc[-1, idx_data, idx_scale] += cost_perc
-
+                    # self.ckp.log[-1, idx_data, idx_scale] += utility.calc_psnr(
+                    #     sr, hr, scale, self.args.rgb_range, dataset=d
+                    # )
+                    item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
+                    self.ckp.log[-1, idx_data, idx_scale] += item_psnr.cpu()
+                    if self.args.save_psnr_list:
+                        psnr_list.append(item_psnr)
+                    if self.ssim:
+                        sr = sr.squeeze().cpu().permute(1,2,0).numpy()
+                        hr = hr.squeeze().cpu().permute(1,2,0).numpy()
+                        ssim = calculate_ssim(sr, hr)
+                        ssim_total += ssim
+                    # if self.lpips_vgg:
+                    #     #print('sr',torch.reshape(torch.Tensor(sr),(1,c,h,w)).size())
+                    #     #print('hr',torch.reshape(torch.Tensor(hr),(1,c,h,w)).size())
+                    #     lpips_vgg = self.loss_fn_vgg(torch.reshape(torch.Tensor(sr),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
+                    #     lpips_vgg_total += lpips_vgg
+                    # if self.lpips_alex:
+                    #     lpips_alex = self.loss_fn_alex(torch.reshape(torch.Tensor(sr),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
+                    #     lpips_alex_total += lpips_alex
+                    #     #print('alex',lpips_alex_total[0][0][0][0]/len(d),type(lpips_alex_total))
                     if self.args.save_gt:
                         save_list.extend([lr, hr])
 
                     if self.args.save_results:
                         self.ckp.save_results(d, filename[0], save_list, scale)
+                    torch.cuda.empty_cache()
 
-                self.ckp.log[-1, idx_data, idx_scale] /= len(d)  # /num_sample
-                log_ssim[-1, idx_data, idx_scale] /= len(d)  # /num_sample
-                log_perc[-1, idx_data, idx_scale] /= len(d)  # /num_sample
+                self.ckp.log[-1, idx_data, idx_scale] /= len(d)
 
                 best = self.ckp.log.max(0)
                 self.ckp.write_log(
-                    '[{} x{}]\tPSNR: {:.3f} SSIM: {:.3f}, Perc: {:.3f} (Best: {:.3f} @epoch {})'.format(
+                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})'.format(
                         d.dataset.name,
                         scale,
                         self.ckp.log[-1, idx_data, idx_scale],
-                        log_ssim[-1, idx_data, idx_scale],
-                        log_perc[-1, idx_data, idx_scale],
                         best[0][idx_data, idx_scale],
                         best[1][idx_data, idx_scale] + 1
                     )
                 )
+                if self.ssim:
+                    self.ckp.write_log(
+                        '[{} x{}]\tSSIM: {:.4f}'.format(
+                            d.dataset.name,
+                            scale,
+                            ssim_total/len(d)
+                        )
+                    )
+                # if self.lpips_vgg:
+                #      self.ckp.write_log(
+                #         '[{} x{}]\tLPIPS-vgg: {:.4f}'.format(
+                #             d.dataset.name,
+                #             scale,
+                #             lpips_vgg_total[0][0][0][0]/len(d)
+                #         )
+                #     )
+                # if self.lpips_alex:
+                #      self.ckp.write_log(
+                #         '[{} x{}]\tLPIPS-alex: {:.4f}'.format(
+                #             d.dataset.name,
+                #             scale,
+                #             lpips_alex_total[0][0][0][0]/len(d)
+                #         )
+                #     )
+                if self.args.save_psnr_list:
+                    psnr_list_np = np.array(psnr_list)
+                    np.save(os.path.join(self.ckp.dir, "psnr_list.pt"), psnr_list_np)
 
         self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
         self.ckp.write_log('Saving...')
@@ -184,35 +206,15 @@ class Trainer:
 
         torch.set_grad_enabled(True)
 
-    def prepare_train(self, *args):
-        """prepare data for training"""
+    def prepare(self, *args):
         device = torch.device('cpu' if self.args.cpu else 'cuda')
-
         def _prepare(tensor):
-            if self.args.precision == 'half':
-                tensor = tensor.half()
-            return tensor.to(device)
-
-        def _prepare_dict(tensor_dict):
-            for k, v in tensor_dict.items():
-                tensor_dict[k] = _prepare(v)
-            return tensor_dict
-
-        return [_prepare_dict(a) for a in args]
-
-    def prepare_test(self, *args):
-        """prepare data for testing"""
-        device = torch.device('cpu' if self.args.cpu else 'cuda')
-
-        def _prepare(tensor):
-            if self.args.precision == 'half':
-                tensor = tensor.half()
+            if self.args.precision == 'half': tensor = tensor.half()
             return tensor.to(device)
 
         return [_prepare(a) for a in args]
 
     def terminate(self):
-        """terminate"""
         if self.args.test_only:
             self.test()
             return True
@@ -220,6 +222,3 @@ class Trainer:
             epoch = self.optimizer.get_last_epoch() + 1
             return epoch >= self.args.epochs
 
-
-if __name__ == '__main__':
-    print(__file__)

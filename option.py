@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser(description='EDSR and MDSR')
 
 parser.add_argument('--debug', action='store_true', default=False,
                     help='Enables debug mode')
-parser.add_argument('--template', default='EDSR_dytest',
+parser.add_argument('--template', default='EDSR_ada',
                     help='You can set various templates in option.py')
 
 # Hardware specifications
@@ -176,7 +176,7 @@ parser.add_argument("--base_prob", type=float, default=0.3,
 parser.add_argument("--sec_method", type=str, default="mean", 
                     help="method to shrink examples (default: mean)")
 
-# dynamic SR
+# dynamicSR specifications
 parser.add_argument("--dynamic", action="store_true", default=False, 
                     help="use dynamic SR")
 parser.add_argument("--efficient", action="store_true", default=False, 
@@ -217,6 +217,14 @@ parser.add_argument("--step", type=int, default=180,
                     help='split-merge step')
 parser.add_argument("--n_parallel", type=int, default=4,
                     help='number of patches when using DynamicSR to restore LR patches in parallel')
+
+# AdaDSR specifications
+parser.add_argument("--ada", action="store_true", default=False, 
+                    help="use AdaDSR")
+parser.add_argument("--ada_depth", type=int, default=32,
+                    help="layer depth when inference adaDSR")
+parser.add_argument('--lambda_pred', type=float, default=0.01,
+                    help="lambda of depth loss")
 
 args = parser.parse_args()
 template.set_template(args)

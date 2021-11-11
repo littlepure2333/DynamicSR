@@ -172,6 +172,43 @@ def set_template(args):
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt"
         args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_static_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.exit_threshold)
 
+    elif args.template == 'EDSR_ada':
+        # model
+        args.model = 'EDSR_ada'
+        args.n_resblocks = 32
+        args.n_feats = 256
+        args.res_scale = 0.1
+
+        # data
+        args.scale = "4"   #############
+        args.dir_data = dir_data
+        args.ext = "sep"
+        args.patch_size = 192
+
+        # device
+        args.device = "2"  #############
+        args.n_GPUs = 1
+
+        # pipeline
+        args.epochs = 300
+        args.lr = 1e-4
+        args.batch_size = 16
+        args.print_every = 10
+        args.ada = True
+
+        # experiemnt
+        args.reset = True
+        # args.save_results = True  ############
+        # args.save_gt = True      ############
+        # args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x3_e300_ps192_lr0.0001/model/model_best.pt"
+        args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt"
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_pretrain".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks)
+
+        # resume
+        # args.load = "20211103_EDSR_paper_x4_e600_ps192_lr0.0001"
+        # args.resume = -1
+
     elif args.template == 'RCAN':
         args.model = 'RCAN'
         args.n_resgroups = 10
