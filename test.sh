@@ -1,16 +1,16 @@
-python main.py --template RCAN_dytest --scale 4 --data_test TEST8K --device 0 --exit_interval 1 --exit_threshold 0.86 \
+python main.py --template RCAN_dytest --scale 4 --data_test TEST8K --device 0 --exit_interval 1 --exit_threshold 0.85 \
 --pre_train /home/shizun/experiment/20211108_RCAN_decision_x4_e300_ps192_lr0.0001_n10_i1_sum_pretrain_de3/model/model_best.pt
 
-python main.py --template RCAN_dytest --scale 4 --data_test TEST8K --device 0 --exit_interval 1 --exit_threshold 0.88 \
+python main.py --template RCAN_dytest --scale 4 --data_test TEST8K --device 0 --exit_interval 1 --exit_threshold 0.84 \
 --pre_train /home/shizun/experiment/20211108_RCAN_decision_x4_e300_ps192_lr0.0001_n10_i1_sum_pretrain_de3/model/model_best.pt
 
-python main.py --template RCAN_dytest --scale 4 --data_test TEST8K --device 0 --exit_interval 1 --exit_threshold 0.90 \
+python main.py --template RCAN_dytest --scale 4 --data_test TEST8K --device 0 --exit_interval 1 --exit_threshold 0.83 \
 --pre_train /home/shizun/experiment/20211108_RCAN_decision_x4_e300_ps192_lr0.0001_n10_i1_sum_pretrain_de3/model/model_best.pt
 
-python main.py --template RCAN_dytest --scale 4 --data_test TEST8K --device 0 --exit_interval 1 --exit_threshold 0.92 \
+python main.py --template RCAN_dytest --scale 4 --data_test TEST8K --device 0 --exit_interval 1 --exit_threshold 0.82 \
 --pre_train /home/shizun/experiment/20211108_RCAN_decision_x4_e300_ps192_lr0.0001_n10_i1_sum_pretrain_de3/model/model_best.pt
 
-python main.py --template RCAN_dytest --scale 4 --data_test TEST8K --device 0 --exit_interval 1 --exit_threshold 0.94 \
+python main.py --template RCAN_dytest --scale 4 --data_test TEST8K --device 0 --exit_interval 1 --exit_threshold 0.81 \
 --pre_train /home/shizun/experiment/20211108_RCAN_decision_x4_e300_ps192_lr0.0001_n10_i1_sum_pretrain_de3/model/model_best.pt
 
 
