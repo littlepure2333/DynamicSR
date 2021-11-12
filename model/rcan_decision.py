@@ -1,8 +1,10 @@
 ## ECCV-2018-Image Super-Resolution Using Very Deep Residual Channel Attention Networks
 ## https://arxiv.org/abs/1807.02758
 from model import common
-
+import torch
 import torch.nn as nn
+
+from utility import print_params
 
 def make_model(args, parent=False):
     return RCAN(args)
@@ -138,16 +140,26 @@ class RCAN(nn.Module):
         else: # test mode
             x = self.sub_mean(x)
             x = self.head(x)
-            res = x
+            res = x * 1.0 # to assign, avoid just reference
 
+            exit_index = torch.ones(x.shape[0],device=x.device) * (-1.)
+            pass_index = torch.arange(0,x.shape[0],device=x.device)
             for i, layer in enumerate(self.body):
-                res = layer(res)
+                if len(pass_index) > 0:
+                    res[pass_index,...] = layer(res[pass_index,...])
                 if i % self.exit_interval == (self.exit_interval-1):
-                    output = self.add_mean(self.tail(x + res))
                     decision = self.eedm(res)
-                    if decision >= self.exit_threshold:
-                        return output, (i-(self.exit_interval-1))//self.exit_interval, decision
-            return output, (i-(self.exit_interval-1))//self.exit_interval, decision
+                    pass_index = torch.where(decision<self.exit_threshold)[0]
+
+                    remain_id = torch.where(exit_index < 0.0)[0]
+                    exit_id = torch.where(decision>=self.exit_threshold)[0]
+                    intersection_id = []
+                    for id in exit_id:
+                        if id in remain_id: intersection_id.append(int(id))
+                    exit_index[intersection_id] = (i-(self.exit_interval-1))//self.exit_interval
+
+            output = self.add_mean(self.tail(x + res))
+            return output, exit_index, decision
 
     def load_state_dict(self, state_dict, strict=False):
         own_state = self.state_dict()

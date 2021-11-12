@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser(description='EDSR and MDSR')
 
 parser.add_argument('--debug', action='store_true', default=False,
                     help='Enables debug mode')
-parser.add_argument('--template', default='EDSR_ada',
+parser.add_argument('--template', default='RCAN_dytest',
                     help='You can set various templates in option.py')
 
 # Hardware specifications
@@ -215,7 +215,7 @@ parser.add_argument("--exit_threshold", type=float, default=0.8,
                     help='early exit decision threshold')
 parser.add_argument("--step", type=int, default=180,
                     help='split-merge step')
-parser.add_argument("--n_parallel", type=int, default=4,
+parser.add_argument("--n_parallel", type=int, default=1,
                     help='number of patches when using DynamicSR to restore LR patches in parallel')
 
 # AdaDSR specifications
