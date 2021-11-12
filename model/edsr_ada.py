@@ -29,14 +29,15 @@ class EDSR(nn.Module):
 
         # define body module
         m_body = [
-            common.ResBlock(
+            common.ResBlockSA(
                 conv, n_feats, kernel_size, act=act, res_scale=args.res_scale
             ) for _ in range(n_resblocks)
         ]
 
+        self.last_conv = conv(n_feats, n_feats, kernel_size)
+
         # define tail module
         m_tail = [
-            conv(n_feats, n_feats, kernel_size),
             common.Upsampler(conv, scale, n_feats, act=False),
             conv(n_feats, args.n_colors, kernel_size)
         ]
@@ -66,7 +67,8 @@ class EDSR(nn.Module):
         # body
         for i, layer in enumerate(self.body):
             mask_i = torch.clamp(pred - i, 0, 1)
-            res = layer(res) * mask_i
+            res = layer(res, mask_i)
+        res = self.last_conv(res)
         res += x
 
         x = self.tail(res)
@@ -95,6 +97,35 @@ class Predictor(nn.Module):
         if depth is not None:
             x = x * depth.view(-1, 1, 1, 1)  # (b,1,h,w)
         return x.clamp(0, self.upper_bound)  # clamp to (0,max)
+
+
+class BasicBlockSA(nn.Module):
+    """conv+norm+relu+conv+norm"""
+
+    def __init__(self, dim, norm_type, clamp=None, attention='ca', use_depth=False):
+        super().__init__()
+        self.clamp, self.attention, self.use_depth = clamp, attention, use_depth
+        norm_layer = get_norm_layer(norm_type)
+
+        # blocks = [nn.ReLU(inplace=True), nn.Conv2d(dim, dim, kernel_size=3, padding=1), norm_layer(dim)]
+        blocks = [nn.Conv2d(dim, dim, kernel_size=3, padding=1), norm_layer(dim)]
+        blocks += [nn.ReLU(inplace=True), nn.Conv2d(dim, dim, kernel_size=3, padding=1), norm_layer(dim)]
+        self.ft = nn.Sequential(*blocks)
+        self.ft.apply(init_weights)
+
+        self.ca = CALayer(channel=dim, reduction=4)
+        # self.sa = SALayer()
+
+    def forward(self, x, depth=None):
+        if depth is None:
+            d_map = torch.ones((1, 1, *x.shape[-2:]), device=x.device)
+        else:
+            d_map = self.clamp(depth)
+
+        res = self.ft(x)
+        res = res * d_map if self.use_depth else res
+        # res = self.ca(res)  # attention
+        return res + x
 
 
 if __name__ == "__main__":

@@ -170,7 +170,7 @@ def set_template(args):
         # args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x3_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_static_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.exit_threshold)
+        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_static_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test)
 
     elif args.template == 'EDSR_ada':
         # model
@@ -186,15 +186,16 @@ def set_template(args):
         args.patch_size = 192
 
         # device
-        args.device = "2"  #############
+        args.device = "1"  #############
         args.n_GPUs = 1
 
         # pipeline
         args.epochs = 300
-        args.lr = 1e-4
+        args.lr = 5e-5
         args.batch_size = 16
         args.print_every = 10
         args.ada = True
+        args.lambda_pred = 0.01
 
         # experiemnt
         args.reset = True
@@ -203,11 +204,47 @@ def set_template(args):
         # args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x3_e300_ps192_lr0.0001/model/model_best.pt"
         args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_pretrain".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks)
+        args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_l{}_pretrain_new".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.lambda_pred)
 
         # resume
         # args.load = "20211103_EDSR_paper_x4_e600_ps192_lr0.0001"
         # args.resume = -1
+
+    elif args.template == 'EDSR_adatest':
+        # model
+        args.model = 'EDSR_ada'
+        args.n_resblocks = 32
+        args.n_feats = 256
+        args.res_scale = 0.1
+
+        # data
+        args.scale = "3"   #############
+        args.dir_data = dir_data
+        args.ext = "sep"
+        # args.data_test = 'TEST8K'  #############
+        args.data_test = 'DIV2K'  #############
+        if args.data_test == 'DIV2K':
+            args.data_range = '801-900'
+        elif args.data_test == 'TEST8K':
+            args.data_range = '1-100'
+        args.ext = "sep"
+
+        # device
+        args.device = "3"  #############
+        args.n_GPUs = 1
+
+        # pipeline
+        args.ada = True
+        args.test_only = True
+        args.ada_depth = 16
+
+        # experiemnt
+        args.reset = True
+        # args.save_results = True  ############
+        # args.save_gt = True      ############
+        args.pre_train = "/home/shizun/experiment/20211111_EDSR_ada_x3_e300_ps192_lr0.0001_n32_pretrain/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20211111_EDSR_ada_x4_e300_ps192_lr0.0001_n32_pretrain/model/model_best.pt"
+        args.save = "{}_{}_x{}_n{}_{}_d{}_ada_test".format(today, args.model, args.scale, args.n_resblocks, args.data_test, args.ada_depth)
 
     elif args.template == 'RCAN':
         args.model = 'RCAN'
