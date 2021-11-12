@@ -97,7 +97,7 @@ def set_template(args):
         args.res_scale = 0.1
 
         # data
-        # args.scale = "2"   #############
+        # args.scale = "4"   #############
         args.dir_data = dir_data
         # args.data_test = 'TEST8K'  #############
         # args.data_test = 'DIV2K'  #############
@@ -116,8 +116,9 @@ def set_template(args):
         # pipeline
         args.dynamic = True
         args.test_only = True     ############
-        # args.exit_interval = 1    ############
+        # args.exit_interval = 4    ############
         # args.exit_threshold = 0.8 ############
+        args.n_parallel = 500         ############
 
         # experiment
         args.reset = True
@@ -218,7 +219,7 @@ def set_template(args):
         args.res_scale = 0.1
 
         # data
-        args.scale = "3"   #############
+        args.scale = "4"   #############
         args.dir_data = dir_data
         args.ext = "sep"
         # args.data_test = 'TEST8K'  #############
@@ -242,8 +243,7 @@ def set_template(args):
         args.reset = True
         # args.save_results = True  ############
         # args.save_gt = True      ############
-        args.pre_train = "/home/shizun/experiment/20211111_EDSR_ada_x3_e300_ps192_lr0.0001_n32_pretrain/model/model_best.pt"
-        # args.pre_train = "/home/shizun/experiment/20211111_EDSR_ada_x4_e300_ps192_lr0.0001_n32_pretrain/model/model_best.pt"
+        args.pre_train = "/home/shizun/experiment/20211112_EDSR_ada_x4_e300_ps192_lr5e-05_n32_l0.01_pretrain_new/model/model_best.pt"
         args.save = "{}_{}_x{}_n{}_{}_d{}_ada_test".format(today, args.model, args.scale, args.n_resblocks, args.data_test, args.ada_depth)
 
     elif args.template == 'RCAN':
@@ -309,7 +309,7 @@ def set_template(args):
         args.n_feats = 64
 
         # data
-        # args.scale = "2"   #############
+        # args.scale = "4"   #############
         args.dir_data = dir_data
         # args.data_test = 'TEST8K'  #############
         # args.data_test = 'DIV2K'  #############
@@ -322,14 +322,15 @@ def set_template(args):
         args.step = 30*int(args.scale)
 
         # device
-        # args.device = "1"  #############
+        # args.device = "0"  #############
         args.n_GPUs = 1
 
         # pipeline
         args.dynamic = True
         args.test_only = True     ############
         # args.exit_interval = 1    ############
-        # args.exit_threshold = 0.8 ############
+        # args.exit_threshold = 0.9 ############
+        args.n_parallel = 500
 
         # experiment
         args.reset = True
