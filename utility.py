@@ -232,8 +232,12 @@ def make_optimizer(args, target):
 
     # scheduler
     milestones = list(map(lambda x: int(x), args.decay.split('-')))
-    kwargs_scheduler = {'milestones': milestones, 'gamma': args.gamma}
-    scheduler_class = lrs.MultiStepLR
+    if len(milestones) == 1:
+        kwargs_scheduler = {'step_size': milestones[0], 'gamma': args.gamma}
+        scheduler_class = lrs.StepLR
+    else:
+        kwargs_scheduler = {'milestones': milestones, 'gamma': args.gamma}
+        scheduler_class = lrs.MultiStepLR
 
     class CustomOptimizer(optimizer_class):
         def __init__(self, *args, **kwargs):
@@ -257,7 +261,7 @@ def make_optimizer(args, target):
             self.scheduler.step()
 
         def get_lr(self):
-            return self.scheduler.get_last_lr()[0]
+            return self.scheduler.get_lr()[0]
 
         def get_last_epoch(self):
             return self.scheduler.last_epoch
@@ -357,7 +361,7 @@ def calc_avg_exit(exit_list):
     if exit_list.ndim == 2:
         exit_list = exit_list.sum(0)
     num = exit_list.sum()
-    index = torch.arange(0,len(exit_list),1)
+    index = torch.arange(0,len(exit_list),1).float()
     avg = (index*exit_list).sum() / num
 
     return avg
