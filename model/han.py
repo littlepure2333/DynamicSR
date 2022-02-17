@@ -151,49 +151,49 @@ class HAN(nn.Module):
         rgb_mean = (0.4488, 0.4371, 0.4040)
         rgb_std = (1.0, 1.0, 1.0)
         self.sub_mean = common.MeanShift(args.rgb_range, rgb_mean, rgb_std)
+        self.add_mean = common.MeanShift(args.rgb_range, rgb_mean, rgb_std, 1)
         
         # define head module
-        modules_head = [conv(args.n_colors, n_feats, kernel_size)]
+        m_head = [conv(args.n_colors, n_feats, kernel_size)]
 
         # define body module
-        modules_body = [
+        m_body = [
             ResidualGroup(
                 conv, n_feats, kernel_size, reduction, act=act, res_scale=args.res_scale, n_resblocks=n_resblocks) \
             for _ in range(n_resgroups)]
 
-        modules_body.append(conv(n_feats, n_feats, kernel_size))
+        m_body.append(conv(n_feats, n_feats, kernel_size))
 
         # define tail module
-        modules_tail = [
+        m_tail = [
             common.Upsampler(conv, scale, n_feats, act=False),
             conv(n_feats, args.n_colors, kernel_size)]
 
-        self.add_mean = common.MeanShift(args.rgb_range, rgb_mean, rgb_std, 1)
-
-        self.head = nn.Sequential(*modules_head)
-        self.body = nn.Sequential(*modules_body)
-        self.csa = CSAM_Module(n_feats)
+        self.head = nn.Sequential(*m_head)
+        self.body = nn.Sequential(*m_body)
+        self.tail = nn.Sequential(*m_tail)
+        self.csa = nn.Sequential(
+            conv(n_feats, n_feats, kernel_size),
+            CSAM_Module(n_feats)
+        )
         self.la = LAM_Module(n_feats)
         self.last_conv = nn.Conv2d(n_feats*11, n_feats, 3, 1, 1)
         self.last = nn.Conv2d(n_feats*2, n_feats, 3, 1, 1)
-        self.tail = nn.Sequential(*modules_tail)
 
     def forward(self, x):
         x = self.sub_mean(x)
         x = self.head(x)
         res = x
-        #pdb.set_trace()
-        for name, midlayer in self.body._modules.items():
-            res = midlayer(res)
-            #print(name)
-            if name=='0':
+
+        for i, layer in enumerate(self.body):
+            res = layer(res)
+            if i ==0:
                 res1 = res.unsqueeze(1)
             else:
                 res1 = torch.cat([res.unsqueeze(1),res1],1)
-        #res = self.body(x)
+
         out1 = res
-        #res3 = res.unsqueeze(1)
-        #res = torch.cat([res1,res3],1)
+
         res = self.la(res1)
         out2 = self.last_conv(res)
 
