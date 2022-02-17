@@ -1,5 +1,8 @@
 from torchstat import stat
 from option import args # modify default template in option.py
+from mmcv.cnn import get_model_complexity_info
+from thop import profile
+import torch
 
 # edsr_decision
 # from model.edsr_decision import make_model
@@ -10,12 +13,12 @@ from option import args # modify default template in option.py
 # args.scale = [3]
 
 # edsr
-# from model.edsr import make_model
-# args.model = 'EDSR'
-# args.n_resblocks = 32
-# args.n_feats = 256
-# args.res_scale = 0.1
-# args.scale = [4]
+from model.edsr import make_model
+args.model = 'EDSR'
+args.n_resblocks = 32
+args.n_feats = 256
+args.res_scale = 0.1
+args.scale = [4]
 
 # rcan_decision
 # from model.rcan_decision import make_model
@@ -23,7 +26,7 @@ from option import args # modify default template in option.py
 # args.n_resgroups = 10
 # args.n_resblocks = 20
 # args.n_feats = 64
-# args.scale = [2]
+# args.scale = [4]
 
 # rcan
 # from model.rcan import make_model
@@ -31,12 +34,12 @@ from option import args # modify default template in option.py
 # args.n_resgroups = 10
 # args.n_resblocks = 20
 # args.n_feats = 64
-# args.scale = [3]
+# args.scale = [4]
 
 # fsrcnn_decision
-from model.fsrcnn_decision import make_model
-args.model = 'fsrcnn_decision'
-args.scale = [3]
+# from model.fsrcnn_decision import make_model
+# args.model = 'fsrcnn_decision'
+# args.scale = [3]
 
 # fsrcnn
 # from model.fsrcnn import make_model
@@ -45,39 +48,79 @@ args.scale = [3]
 
 
 m = make_model(args)
-stat(m, (3, 32, 32))
+stat(m, (3, 40, 40))
 # print(m)
+
+# mmcv for RCAN
+# input_shape = (64,32,32)
+# m = m.body[0].body[0].body[3]
+# # print(m)
+# flops, params = get_model_complexity_info(m, input_shape)
+# split_line = '=' * 30
+# print('{0}\nInput shape: {1}\nFlops: {2}\nParams: {3}\n{0}'.format(
+# split_line, input_shape, flops, params))
+
+
+# thop
+# input = torch.randn(1, 3, 32, 32)
+# macs, params = profile(m, inputs=(input, ))
+# from thop import clever_format
+# macs, params = clever_format([macs, params], "%.3f")
+# print(params)
+
+
+# input = torch.randn(1, 3, 32, 32)
+# output = m(input)
 
 
 '''
 EDSR x2: (3,32,32)
-    head: 7,401,472
-    body: 38,671,745,024 = 32 * 1,208,483,840
-    tail: 3,049,533,440
-    eedm: 256
+    head: 7,401,472 (0.02%)
+    body: 38,671,745,024 = 32 * 1,208,483,840 (92.6%)
+    tail: 3,049,533,440 (7.3%)
+    eedm: 256 （0.00%）
     total:41,728,679,936 (41.73GFlops)
+    Total params: 40,729,627
 (4.27,5.47,6.68,7.89,9.10,10.31,11.52,12.72,13.93,15.14,16.35,17.56,18.77,19.98,21.18,22.39,23.60,24.81,26.02,27.23,28.44,29.64,30.85,32.06,33.27,34.48,35.69,36.89,38.10,39.31,40.52,41.73)
 
 EDSR x3: (3,32,32)
-    head: 7,462,912
-    body: 38,671,745,024 = 32 * 1,208,483,840
-    tail: 6,106,147,840
+    head: 7,462,912 (0.02%)
+    body: 38,671,745,024 = 32 * 1,208,483,840 （86.3%）
+    tail: 6,106,147,840（13.6%）
     eedm: 256
-    total:44,785,355,776 (44.79GFlops)
+    total:44,785,355,776 (44.79GFlops) 
+    Total params: 43,680,027
 (7.32,8.53,9.74,10.95,12.16,13.36,14.57,15.78,16.99,18.20,19.41,20.62,21.82,23.03,24.24,25.45,26.66,27.87,29.07,30.28,31.49,32.70,33.91,35.12,36.33,37.53,38.74,39.95,41.16,42.37,43.58,44.79)
 
 EDSR x4: (3,32,32)
-    head: 7,548,928
-    body: 38,671,745,024 = 32 * 1,208,483,840
-    tail: 12,802,375,680
+    head: 7,548,928 (0.01%)
+    body: 38,671,745,024 = 32 * 1,208,483,840 (75.1%)
+    tail: 12,802,375,680 (24.9%)
     eedm: 256
-    total:51,481,669,888.0 (51.48GFlops)
+    total:51,481,669,888 (51.48GFlops)
+    Total params: 43,089,947
 (14.02,15.23,16.44,17.64,18.85,20.06,21.27,22.48,23.69,24.89,26.10,27.31,28.52,29.73,30.94,32.15,33.35,34.56,35.77,36.98,38.19,39.40,40.61,41.81,43.02,44.23,45.44,46.65,47.86,49.06,50.27,51.48)
+
+EDSR x4: (3,40,40)
+    head: 11,795,200
+    body: 60,424,601,600 = 32 * 1,888,268,800
+    tail: 20,003,712,000
+    eedm: 256
+    total:80,440,108,800 (80.44GFlops)
+
+EDSR x4: (3,48,48)
+    head: 16,985,088
+    body: 86,994,441,216 = 32 * 2,718,576,288
+    tail: 28,805,345,280
+    eedm: 256
+    total:115,833,756,672 (115.83GFlops)
+
+
 '''
 
 '''
 RCAN x2: (3,32,32)
-    head: 3,631,104
+    head: 3,631,104 
     body: 15,515,340,864 = 10 * 1,551,534,086 
     tail: 196,161,536
     eedm: 64
@@ -130,8 +173,8 @@ FSRCNN x4: (3,32,32)
 
 
 
-print(4300800+57344+688128+12288)
-print(688128+57344)
+# print(4300800+57344+688128+12288)
+# print(688128+57344)
 
 
 # for i in range(10):
