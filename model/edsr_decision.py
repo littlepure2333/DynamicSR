@@ -32,11 +32,11 @@ class EDSR(nn.Module):
                 conv, n_feats, kernel_size, act=act, res_scale=args.res_scale
             ) for _ in range(n_resblocks)
         ]
-        # m_body.append(conv(n_feats, n_feats, kernel_size))
+        m_body.append(conv(n_feats, n_feats, kernel_size))
 
         # define tail module
         m_tail = [
-            conv(n_feats, n_feats, kernel_size),
+            # conv(n_feats, n_feats, kernel_size),
             common.Upsampler(conv, scale, n_feats, act=False),
             conv(n_feats, args.n_colors, kernel_size)
         ]
@@ -62,10 +62,10 @@ class EDSR(nn.Module):
 
             outputs = []
             decisions = []
-            for i, layer in enumerate(self.body):
+            for i, layer in enumerate(self.body[:-1]):
                 res = layer(res)
                 if i % self.exit_interval == (self.exit_interval-1):
-                    output = self.add_mean(self.tail(x + res))
+                    output = self.add_mean(self.tail(x + self.body[-1](res)))
                     decision = self.eedm(res)
                     outputs.append(output)
                     decisions.append(decision)
@@ -82,7 +82,7 @@ class EDSR(nn.Module):
 
             exit_index = torch.ones(x.shape[0],device=x.device) * (-1.)
             pass_index = torch.arange(0,x.shape[0],device=x.device)
-            for i, layer in enumerate(self.body):
+            for i, layer in enumerate(self.body[:-1]):
                 if len(pass_index) > 0:
                     res[pass_index,...] = layer(res[pass_index,...])
                 if i % self.exit_interval == (self.exit_interval-1):
@@ -96,7 +96,7 @@ class EDSR(nn.Module):
                         if id in remain_id: intersection_id.append(int(id))
                     exit_index[intersection_id] = (i-(self.exit_interval-1))//self.exit_interval
 
-            output = self.add_mean(self.tail(x + res))
+            output = self.add_mean(self.tail(x + self.body[-1](res)))
             return output, exit_index, decision
 
 
