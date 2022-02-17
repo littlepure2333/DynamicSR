@@ -263,11 +263,24 @@ class Trainer():
 
         torch.set_grad_enabled(True)
 
+    def warm_up(self):
+        self.ckp.write_log("warming up...\n")
+        for idx_data, d in enumerate(self.loader_test):
+            for idx_scale, scale in enumerate(self.scale):
+                d.dataset.set_scale(idx_scale)
+                for i, (lr, hr, filename) in enumerate(d):
+                    lr, hr = self.prepare(lr, hr)
+                    sr = self.model(lr, idx_scale)
+                    if i > 10:
+                        break
+        # torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+        self.ckp.write_log("warm up ended\n")
+
     def test_only_dynamic(self):
         torch.set_grad_enabled(False)
 
         epoch = self.optimizer.get_last_epoch()
-        self.ckp.write_log('\nEvaluation:')
         if self.args.model.find("RCAN") >= 0:
             exit_len = int(self.args.n_resgroups/self.args.exit_interval)
         elif self.args.model.find("EDSR") >= 0:
@@ -278,8 +291,13 @@ class Trainer():
             torch.zeros(1, len(self.loader_test), len(self.scale))
         )
         self.model.eval()
+        self.warm_up()
 
+        self.ckp.write_log('\nEvaluation:')
         timer_test = utility.timer()
+        timer_pre = utility.timer()
+        timer_model = utility.timer()
+        timer_post = utility.timer()
         if self.args.save_results: self.ckp.begin_background()
         for idx_data, d in enumerate(self.loader_test):
             for idx_scale, scale in enumerate(self.scale):
@@ -293,26 +311,39 @@ class Trainer():
 
                 for lr, hr, filename in d:
                     pass_start = time.time()
+                    timer_pre.tic()
                     lr, hr = self.prepare(lr, hr) # (B,C,H,W)
                     lr_list, num_h, num_w, new_h, new_w = utility.crop_parallel(lr, self.patch_size//scale, self.step//scale)
+                    timer_pre.hold()
                     sr_list = torch.Tensor()
+                    exit_index_list = torch.Tensor()
                     # sr_list = []
                     avg_exit = 0
 
                     pbar = tqdm(range(len(lr_list)//self.args.n_parallel + 1), ncols=120)
                     for lr_patch_index in pbar:
+                        timer_model.tic()
                         sr_patches, exit_index, decision = self.model(lr_list[lr_patch_index*self.args.n_parallel:(lr_patch_index+1)*self.args.n_parallel], idx_scale)
+                        torch.cuda.synchronize()
+                        timer_model.hold()
                         sr_list = torch.cat([sr_list, sr_patches.cpu()])
                         for index in exit_index:
                             exit_list[-1, int(index)] += 1
+                        exit_index_list = torch.cat([exit_index_list,exit_index.cpu()])
 
-
+                    timer_post.tic()
                     sr = utility.combine(sr_list, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step)
                     pass_end = time.time()
                     pass_time = pass_end-pass_start
                     pass_time_list.append(pass_time)
 
+                    sr = utility.quantize(sr, self.args.rgb_range)
                     save_dict['SR'] = sr
+                    timer_post.hold()
+
+                    if self.args.add_mask:
+                        sr_mask = utility.add_mask(sr, scale, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step, exit_index_list)
+                        save_dict['SR_MASK'] = sr_mask
                     hr = hr[:, :, 0:new_h*scale, 0:new_w*scale].cpu()
                     
                     item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
@@ -376,7 +407,7 @@ class Trainer():
                         )
                     )
 
-        self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
+        # self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
         self.ckp.write_log('Saving...')
 
         if self.args.save_results:
@@ -385,8 +416,23 @@ class Trainer():
         self.ckp.save_exit_list(exit_list)
 
         self.ckp.write_log(
-            'Total: {:.2f}s\n'.format(timer_test.toc()), refresh=True
+            '[whole]\t {:.4f}s\n'.format(timer_test.toc()), refresh=True
         )
+        self.ckp.write_log(
+            '[Total]\t pre:{:.4f}s\tmodel:{:.4f}s\tpost:{:.4f}s\n'.format(
+                timer_pre.release(reset=False),
+                timer_model.release(reset=False),
+                timer_post.release(reset=False)
+            ),refresh=True
+        )
+        self.ckp.write_log(
+            '[Average]\t pre:{:.4f}s\tmodel:{:.4f}s\tpost:{:.4f}s\n'.format(
+                timer_pre.release(avg=True),
+                timer_model.release(avg=True),
+                timer_post.release(avg=True)
+            ),refresh=True
+        )
+
 
         torch.set_grad_enabled(True)
 
@@ -394,13 +440,17 @@ class Trainer():
         torch.set_grad_enabled(False)
 
         epoch = self.optimizer.get_last_epoch()
-        self.ckp.write_log('\nEvaluation:')
         self.ckp.add_log(
             torch.zeros(1, len(self.loader_test), len(self.scale))
         )
         self.model.eval()
+        self.warm_up()
 
+        self.ckp.write_log('\nEvaluation:')
         timer_test = utility.timer()
+        timer_pre = utility.timer()
+        timer_model = utility.timer()
+        timer_post = utility.timer()
         if self.args.save_results: self.ckp.begin_background()
         for idx_data, d in enumerate(self.loader_test):
             for idx_scale, scale in enumerate(self.scale):
@@ -408,19 +458,30 @@ class Trainer():
                 ssim_total = 0
                 save_dict = {}
                 psnr_list = []
+                pass_time_list = []
+
 
                 for lr, hr, filename in d:
+                    pass_start = time.time()
+                    timer_pre.tic()
                     lr, hr = self.prepare(lr, hr) # (B,C,H,W)
                     lr_list, num_h, num_w, new_h, new_w = utility.crop_parallel(lr, self.patch_size//scale, self.step//scale)
+                    timer_pre.hold()
                     sr_list = torch.Tensor()
 
                     pbar = tqdm(range(len(lr_list)//self.args.n_parallel + 1), ncols=120)
                     for lr_patch_index in pbar:
+                        timer_model.tic()
                         sr_patches = self.model(lr_list[lr_patch_index*self.args.n_parallel:(lr_patch_index+1)*self.args.n_parallel], idx_scale)
+                        torch.cuda.synchronize()
+                        timer_model.hold()
                         sr_list = torch.cat([sr_list, sr_patches.cpu()])
 
+                    timer_post.tic()
                     sr = utility.combine(sr_list, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step)
+                    sr = utility.quantize(sr, self.args.rgb_range)
                     save_dict['SR'] = sr
+                    timer_post.hold()
                     hr = hr[:, :, 0:new_h*scale, 0:new_w*scale].cpu()
 
                     item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
@@ -473,7 +534,7 @@ class Trainer():
                         )
                     )
 
-        self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
+        # self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
         self.ckp.write_log('Saving...')
 
         if self.args.save_results:
@@ -483,7 +544,21 @@ class Trainer():
             self.ckp.save(self, epoch, is_best=(best[1][0, 0] + 1 == epoch))
 
         self.ckp.write_log(
-            'Total: {:.2f}s\n'.format(timer_test.toc()), refresh=True
+            '[whole]\t {:.4f}s\n'.format(timer_test.toc()), refresh=True
+        )
+        self.ckp.write_log(
+            '[Total]\t pre:{:.4f}s\tmodel:{:.4f}s\tpost:{:.4f}s\n'.format(
+                timer_pre.release(reset=False),
+                timer_model.release(reset=False),
+                timer_post.release(reset=False)
+            ),refresh=True
+        )
+        self.ckp.write_log(
+            '[Average]\t pre:{:.4f}s\tmodel:{:.4f}s\tpost:{:.4f}s\n'.format(
+                timer_pre.release(avg=True),
+                timer_model.release(avg=True),
+                timer_post.release(avg=True)
+            ),refresh=True
         )
 
         torch.set_grad_enabled(True)

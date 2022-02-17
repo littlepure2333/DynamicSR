@@ -99,17 +99,35 @@ class Trainer():
         self.optimizer.schedule()
         torch.cuda.empty_cache()
 
+    def warm_up(self):
+        self.ckp.write_log("warming up...\n")
+        for idx_data, d in enumerate(self.loader_test):
+            for idx_scale, scale in enumerate(self.scale):
+                d.dataset.set_scale(idx_scale)
+                for i, (lr, hr, filename) in enumerate(d):
+                    lr, hr = self.prepare(lr, hr)
+                    sr = self.model(lr, idx_scale)
+                    if i > 10:
+                        break
+        # torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+        self.ckp.write_log("warm up ended\n")
+
     def test(self):
         torch.set_grad_enabled(False)
 
         epoch = self.optimizer.get_last_epoch()
-        self.ckp.write_log('\nEvaluation:')
         self.ckp.add_log(
             torch.zeros(1, len(self.loader_test), len(self.scale))
         )
         self.model.eval()
+        self.warm_up()
 
+        self.ckp.write_log('\nEvaluation:')
         timer_test = utility.timer()
+        timer_pre = utility.timer()
+        timer_model = utility.timer()
+        timer_post = utility.timer()
         if self.args.save_results: self.ckp.begin_background()
         for idx_data, d in enumerate(self.loader_test):
             for idx_scale, scale in enumerate(self.scale):
@@ -119,9 +137,16 @@ class Trainer():
                 # lpips_alex_total = 0
                 psnr_list = []
 
-                for lr, hr, filename in tqdm(d, ncols=80):
+                pbar = tqdm(d)
+                for lr, hr, filename in pbar:
+                    timer_pre.tic()
                     lr, hr = self.prepare(lr, hr)
+                    timer_pre.hold()
+                    timer_model.tic()
                     sr = self.model(lr, idx_scale)
+                    torch.cuda.synchronize()
+                    timer_model.hold()
+                    timer_post.tic()
                     sr = utility.quantize(sr, self.args.rgb_range)
                     #print('sr',sr.size())
                     #print('hr',hr.size())
@@ -132,6 +157,7 @@ class Trainer():
                     #     sr, hr, scale, self.args.rgb_range, dataset=d
                     # )
                     item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
+                    # pbar.set_description("{} shape:{}\tPSNR:{:.4f}".format(filename, sr.shape, item_psnr))
                     self.ckp.log[-1, idx_data, idx_scale] += item_psnr.cpu()
                     if self.args.save_psnr_list:
                         psnr_list.append(item_psnr)
@@ -154,7 +180,8 @@ class Trainer():
 
                     if self.args.save_results:
                         self.ckp.save_results(d, filename[0], save_list, scale)
-                    torch.cuda.empty_cache()
+                    # torch.cuda.empty_cache()
+                    timer_post.hold()
 
                 self.ckp.log[-1, idx_data, idx_scale] /= len(d)
 
@@ -196,7 +223,7 @@ class Trainer():
                     psnr_list_np = np.array(psnr_list)
                     np.save(os.path.join(self.ckp.dir, "psnr_list.pt"), psnr_list_np)
 
-        self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
+        # self.ckp.write_log('Model forward: {:.2f}s\n'.format(timer_model.release(reset=False)))
         self.ckp.write_log('Saving...')
 
         if self.args.save_results:
@@ -206,7 +233,21 @@ class Trainer():
             self.ckp.save(self, epoch, is_best=(best[1][0, 0] + 1 == epoch))
 
         self.ckp.write_log(
-            'Total: {:.2f}s\n'.format(timer_test.toc()), refresh=True
+            '[whole]\t {:.4f}s\n'.format(timer_test.toc()), refresh=True
+        )
+        self.ckp.write_log(
+            '[Total]\t pre:{:.4f}s\tmodel:{:.4f}s\tpost:{:.4f}s\n'.format(
+                timer_pre.release(reset=False),
+                timer_model.release(reset=False),
+                timer_post.release(reset=False)
+            ),refresh=True
+        )
+        self.ckp.write_log(
+            '[Average]\t pre:{:.4f}s\tmodel:{:.4f}s\tpost:{:.4f}s\n'.format(
+                timer_pre.release(avg=True),
+                timer_model.release(avg=True),
+                timer_post.release(avg=True)
+            ),refresh=True
         )
 
         torch.set_grad_enabled(True)
