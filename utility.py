@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import imageio
 import pickle
+import cv2
 
 import torch
 import torch.optim as optim
@@ -20,6 +21,7 @@ import torch.optim.lr_scheduler as lrs
 class timer():
     def __init__(self):
         self.acc = 0
+        self.times = 0
         self.tic()
 
     def tic(self):
@@ -31,16 +33,23 @@ class timer():
         return diff
 
     def hold(self):
+        ''' accumulate (toc-tic) and hold times'''
         self.acc += self.toc()
+        self.times += 1
 
-    def release(self):
-        ret = self.acc
-        self.acc = 0
+    def release(self, avg=False, reset=True):
+        ''' return all accumulated (toc-tic) in sum/avg mode, then reset'''
+        ret = self.acc / self.count() if avg else self.acc
+        if reset: self.reset()
 
         return ret
 
+    def count(self):
+        return self.times
+
     def reset(self):
         self.acc = 0
+        self.times = 0
 
 class checkpoint():
     def __init__(self, args):
@@ -356,6 +365,39 @@ def combine_parallel(sr_list, num_h, num_w, h, w, patch_size, step):
         sr_img[:, :, i*step:i*step+(patch_size-step), :]/=2
 
     return sr_img
+
+
+def add_mask(sr_img, scale, num_h, num_w, h, w, patch_size, step, exit_index, show_number=True):
+    # white and 7-rainbow
+    # color_list = [(255,255,255),(255,0,0),(255,165,0),(255,255,0),(0,255,0),(0,127,255),(0,0,255),(139,0,255)]
+    color_list = [(255,255,255),(255,225,0),(255,165,0),(240,0,0),(0,255,0),(0,127,255),(0,0,255),(139,0,255)]
+
+    idx = 0
+    sr_img = sr_img.squeeze().permute(1,2,0).numpy() # (H,W,C)
+    mask = np.zeros((sr_img.shape), 'float32')
+    for i in range(num_h):
+        for j in range(num_w):
+            bbox = [j * step + 2*scale, 
+                     i * step + 2*scale,
+                     j * step + patch_size - (2*scale+1),
+                     i * step + patch_size - (2*scale+1)]  # xl,yl,xr,yr
+
+            color = color_list[int(exit_index[idx])]
+            cv2.rectangle(mask, (bbox[0]+1, bbox[1]+1), (bbox[2]-1, bbox[3]-1), color=color, thickness=-1)
+            cv2.putText(mask, '{}'.format(int(exit_index[idx]+1)), 
+                        (bbox[0]+4*scale, bbox[3]-4*scale), cv2.FONT_HERSHEY_SIMPLEX, scale, (255, 255, 255), 2)
+            idx += 1
+
+    # add_mask
+    alpha = 0.7
+    beta = 1 - alpha
+    gamma = 0
+    sr_mask = cv2.addWeighted(sr_img, alpha, mask, beta, gamma)
+    sr_mask = torch.from_numpy(sr_mask).permute(2,0,1).unsqueeze(0)
+
+    return sr_mask
+
+
 
 def calc_avg_exit(exit_list):
     if exit_list.ndim == 2:
