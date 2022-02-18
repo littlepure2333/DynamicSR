@@ -331,6 +331,54 @@ def combine(sr_list, num_h, num_w, h, w, patch_size, step):
 
     return sr_img
 
+def seamless_combine(sr_list, num_h, num_w, h, w, patch_size, step):
+    index=0
+    sr_img = torch.zeros((1, 3, h, w)).to(sr_list[0].device)
+    border = [1,1,1,1]
+    for i in range(num_h):
+        if i == 0:  # top side
+            border[1] = 0
+            border[3] = 1
+        elif i < num_h-1: # middle
+            border[1] = 1
+            border[3] = 1
+        else: # bottom side
+            border[1] = 1
+            border[3] = 0
+        for j in range(num_w):
+            if j == 0:  # left side
+                border[0] = 0
+                border[2] = 1
+            elif j < num_w-1: # middle
+                border[0] = 1
+                border[2] = 1
+            else: # right side
+                border[0] = 1
+                border[2] = 0
+            sr_img[:, :, i*step:i*step+patch_size, j*step:j*step+patch_size] += fade_border(sr_list[index], patch_size-step, border)
+            index+=1
+
+    return sr_img
+
+def fade_border(img, border_size, border=[1,1,1,1]):
+    ''' 
+    gradually fade the border while maintain the center,
+    "border" indicates fading at [left, top, right, bottom]
+    '''
+    if border_size > 0: # overlap
+        if border[0] != 0: # left border
+            img[:, :, :border_size] *= torch.linspace(0, 1, border_size).unsqueeze(0).unsqueeze(0)
+        if border[1] != 0: # top border
+            img[:, :border_size, :] *= torch.linspace(0, 1, border_size).unsqueeze(0).transpose(1,0).unsqueeze(0)
+        if border[2] != 0: # right border
+            img[:, :, -border_size:] *= torch.linspace(1, 0, border_size).unsqueeze(0).unsqueeze(0)
+        if border[3] != 0: # bottom border
+            img[:, -border_size:,:] *= torch.linspace(1, 0, border_size).unsqueeze(0).transpose(1,0).unsqueeze(0)
+        return img
+    else: # non-overlap
+        return img
+
+
 def crop_parallel(img, crop_sz, step):
     b, c, h, w = img.shape
     h_space = np.arange(0, h - crop_sz + 1, step)

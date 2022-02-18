@@ -271,7 +271,7 @@ class Trainer():
                 for i, (lr, hr, filename) in enumerate(d):
                     lr, hr = self.prepare(lr, hr)
                     sr = self.model(lr, idx_scale)
-                    if i > 10:
+                    if i > 2:
                         break
         # torch.cuda.empty_cache()
         torch.cuda.synchronize()
@@ -478,7 +478,8 @@ class Trainer():
                         sr_list = torch.cat([sr_list, sr_patches.cpu()])
 
                     timer_post.tic()
-                    sr = utility.combine(sr_list, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step)
+                    # sr = utility.combine(sr_list, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step)
+                    sr = utility.seamless_combine(sr_list, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step)
                     sr = utility.quantize(sr, self.args.rgb_range)
                     save_dict['SR'] = sr
                     timer_post.hold()
