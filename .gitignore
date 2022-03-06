@@ -17,7 +17,6 @@ model/lib/*.so
 *.tar.gz
 *.txt
 /temp
-scripts/
 plot/
 plot_eccv/
 sample/
