@@ -10,7 +10,7 @@ import torch.nn.utils as utils
 from tqdm import tqdm
 from model.patchnet import PatchNet
 import lpips
-
+import time
 from data.utils_image import calculate_ssim
 
 class Trainer():
@@ -114,16 +114,23 @@ class Trainer():
             for idx_scale, scale in enumerate(self.scale):
                 d.dataset.set_scale(idx_scale)
                 ssim_total = 0
+                pass_time_list = []
 
                 for lr, hr, filename in d:
+                    pass_start = time.time()
                     lr, hr = self.prepare(lr, hr)
                     sr, pred, depth = self.model(lr, idx_scale)
                     sr = utility.quantize(sr, self.args.rgb_range)
+                    pass_end = time.time()
+                    pass_time = pass_end - pass_start
+                    pass_time_list.append(pass_time)
 
                     save_list = [sr]
-                    item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
+
+                    item_psnr = utility.calc_psnr(sr.cpu(), hr.cpu(), scale, self.args.rgb_range, dataset=d)
+                    print("psnr time:{:.4f}s".format(time.time() - pass_end))
                     self.ckp.log[-1, idx_data, idx_scale] += item_psnr.cpu()
-                    self.ckp.write_log("{}\tPSNR:{:.3f}".format(filename, item_psnr))
+                    self.ckp.write_log("{}\tPSNR:{:.3f} pass time:{:.3f}s".format(filename, item_psnr, pass_time))
 
                     if self.ssim:
                         sr = sr.squeeze().cpu().permute(1,2,0).numpy()
@@ -135,18 +142,20 @@ class Trainer():
 
                     if self.args.save_results:
                         self.ckp.save_results(d, filename[0], save_list, scale)
-                    torch.cuda.empty_cache()
+                    # torch.cuda.empty_cache()
 
                 self.ckp.log[-1, idx_data, idx_scale] /= len(d)
 
                 best = self.ckp.log.max(0)
+                AVG_pass_time = np.array(pass_time_list)[1:].mean()
                 self.ckp.write_log(
-                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})'.format(
+                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {}) avg pass time: {:.3f}s'.format(
                         d.dataset.name,
                         scale,
                         self.ckp.log[-1, idx_data, idx_scale],
                         best[0][idx_data, idx_scale],
-                        best[1][idx_data, idx_scale] + 1
+                        best[1][idx_data, idx_scale] + 1,
+                        AVG_pass_time
                     )
                 )
                 if self.ssim:

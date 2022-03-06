@@ -88,18 +88,18 @@ class Trainer():
             # loss.backward()
 
             # forward every mode
-            # for i in range(0, len(self.exit_list)):
-            #     self.model.apply(lambda m: setattr(m, 'exit_index', i))
-            #     sr = self.model(lr, 0)
-            #     loss = self.loss(sr, hr)
-            #     loss.backward()
-            #     torch.cuda.empty_cache()
+            for i in range(0, len(self.exit_list)):
+                self.model.apply(lambda m: setattr(m, 'exit_index', i))
+                sr = self.model(lr, 0)
+                loss = self.loss(sr, hr)
+                loss.backward()
+                # torch.cuda.empty_cache()
             
             # only last mode
-            self.model.apply(lambda m: setattr(m, 'exit_index', len(self.exit_list)-1))
-            sr = self.model(lr, 0)
-            loss = self.loss(sr, hr)
-            loss.backward()
+            # self.model.apply(lambda m: setattr(m, 'exit_index', len(self.exit_list)-1))
+            # sr = self.model(lr, 0)
+            # loss = self.loss(sr, hr)
+            # loss.backward()
             
 
             torch.cuda.empty_cache()

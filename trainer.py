@@ -10,7 +10,7 @@ import torch.nn.utils as utils
 from tqdm import tqdm
 from model.patchnet import PatchNet
 import lpips
-
+from pytorch_msssim import ssim
 from data.utils_image import calculate_ssim
 
 class Trainer():
@@ -107,7 +107,7 @@ class Trainer():
                 for i, (lr, hr, filename) in enumerate(d):
                     lr, hr = self.prepare(lr, hr)
                     sr = self.model(lr, idx_scale)
-                    if i > 10:
+                    if i > 2:
                         break
         # torch.cuda.empty_cache()
         torch.cuda.synchronize()
@@ -121,7 +121,7 @@ class Trainer():
             torch.zeros(1, len(self.loader_test), len(self.scale))
         )
         self.model.eval()
-        self.warm_up()
+        # self.warm_up()
 
         self.ckp.write_log('\nEvaluation:')
         timer_test = utility.timer()
@@ -161,11 +161,18 @@ class Trainer():
                     self.ckp.log[-1, idx_data, idx_scale] += item_psnr.cpu()
                     if self.args.save_psnr_list:
                         psnr_list.append(item_psnr)
+                    
                     if self.ssim:
-                        sr = sr.squeeze().cpu().permute(1,2,0).numpy()
-                        hr = hr.squeeze().cpu().permute(1,2,0).numpy()
-                        ssim = calculate_ssim(sr, hr)
-                        ssim_total += ssim
+                        ssim_item = ssim(sr, hr, data_range=255, size_average=False).item()
+                        # print(ssim_val)
+                        # sr_np = sr.squeeze().cpu().permute(1,2,0).numpy()
+                        # hr_np = hr.squeeze().cpu().permute(1,2,0).numpy()
+                        # ssim_item = calculate_ssim(sr_np, hr_np)
+                        ssim_total += ssim_item
+                        self.ckp.write_log("{}\tPSNR:{:.3f}\tSSIM:{:.4f}".format(filename, item_psnr, ssim_item))
+                    else:
+                        self.ckp.write_log("{}\tPSNR:{:.3f}".format(filename, item_psnr))
+
                     # if self.lpips_vgg:
                     #     #print('sr',torch.reshape(torch.Tensor(sr),(1,c,h,w)).size())
                     #     #print('hr',torch.reshape(torch.Tensor(hr),(1,c,h,w)).size())
@@ -186,21 +193,25 @@ class Trainer():
                 self.ckp.log[-1, idx_data, idx_scale] /= len(d)
 
                 best = self.ckp.log.max(0)
-                self.ckp.write_log(
-                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})'.format(
-                        d.dataset.name,
-                        scale,
-                        self.ckp.log[-1, idx_data, idx_scale],
-                        best[0][idx_data, idx_scale],
-                        best[1][idx_data, idx_scale] + 1
-                    )
-                )
                 if self.ssim:
                     self.ckp.write_log(
-                        '[{} x{}]\tSSIM: {:.4f}'.format(
+                        '[{} x{}]\tPSNR: {:.3f}\tSSIM: {:.4f} (Best: {:.3f} @epoch {})'.format(
                             d.dataset.name,
                             scale,
-                            ssim_total/len(d)
+                            self.ckp.log[-1, idx_data, idx_scale],
+                            ssim_total/len(d),
+                            best[0][idx_data, idx_scale],
+                            best[1][idx_data, idx_scale] + 1
+                        )
+                    )
+                else:
+                    self.ckp.write_log(
+                        '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})'.format(
+                            d.dataset.name,
+                            scale,
+                            self.ckp.log[-1, idx_data, idx_scale],
+                            best[0][idx_data, idx_scale],
+                            best[1][idx_data, idx_scale] + 1
                         )
                     )
                 # if self.lpips_vgg:

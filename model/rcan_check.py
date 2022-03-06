@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 
 from utility import print_params
+import utility
 
 def make_model(args, parent=False):
     return RCAN(args)
@@ -77,9 +78,10 @@ class RCAN(nn.Module):
         n_feats = args.n_feats
         kernel_size = 3
         reduction = args.reduction 
-        scale = args.scale[0]
+        self.scale = scale = args.scale[0]
         act = nn.ReLU(True)
 
+        self.args = args
         self.test_only = args.test_only
         self.exit_interval = args.exit_interval
         self.exit_threshold = args.exit_threshold
@@ -117,50 +119,35 @@ class RCAN(nn.Module):
         self.tail = nn.Sequential(*m_tail)
         self.eedm = nn.Sequential(*m_eedm)
 
-    def forward(self, x):
-        if not self.test_only: # training mode / eval mode
-            x = self.sub_mean(x)
-            x = self.head(x)
-            res = x
+    def forward(self, input):
+        x, hr = input
+        x = self.sub_mean(x)
+        x = self.head(x)
+        res = x * 1.0 # to assign, avoid just reference
 
-            outputs = []
-            decisions = []
-            for i, layer in enumerate(self.body[:-1]):
-                res = layer(res)
-                if i % self.exit_interval == (self.exit_interval-1):
-                    output = self.add_mean(self.tail(x + self.body[-1](res)))
-                    decision = self.eedm(res)
-                    outputs.append(output)
-                    decisions.append(decision)
-                    # output.append(self.add_mean(self.tail(x + res)))
+        exit_index = torch.ones(x.shape[0],device=x.device) * (-1.)
+        pass_index = torch.arange(0,x.shape[0],device=x.device)
+        pre_psnr = 0
+        for i, layer in enumerate(self.body[:-1]):
+            if len(pass_index) > 0:
+                res[pass_index,...] = layer(res[pass_index,...])
+            if i % self.exit_interval == (self.exit_interval-1):
+                sr_i = self.add_mean(self.tail(x + self.body[-1](res)))
+                now_psnr = utility.calc_psnr(sr_i, hr, self.scale, self.args.rgb_range)
+                decision = 1 - torch.tanh(torch.tensor(now_psnr - pre_psnr))
+                pre_psnr = now_psnr
+                # decision = self.eedm(res)
+                pass_index = torch.where(decision<self.exit_threshold)[0]
 
-            # x = self.tail(res)
-            # x = self.add_mean(x)
+                remain_id = torch.where(exit_index < 0.0)[0]
+                exit_id = torch.where(decision>=self.exit_threshold)[0]
+                intersection_id = []
+                for id in exit_id:
+                    if id in remain_id: intersection_id.append(int(id))
+                exit_index[intersection_id] = (i-(self.exit_interval-1))//self.exit_interval
 
-            return outputs, decisions
-        else: # test mode
-            x = self.sub_mean(x)
-            x = self.head(x)
-            res = x * 1.0 # to assign, avoid just reference
-
-            exit_index = torch.ones(x.shape[0],device=x.device) * (-1.)
-            pass_index = torch.arange(0,x.shape[0],device=x.device)
-            for i, layer in enumerate(self.body[:-1]):
-                if len(pass_index) > 0:
-                    res[pass_index,...] = layer(res[pass_index,...])
-                if i % self.exit_interval == (self.exit_interval-1):
-                    decision = self.eedm(res)
-                    pass_index = torch.where(decision<self.exit_threshold)[0]
-
-                    remain_id = torch.where(exit_index < 0.0)[0]
-                    exit_id = torch.where(decision>=self.exit_threshold)[0]
-                    intersection_id = []
-                    for id in exit_id:
-                        if id in remain_id: intersection_id.append(int(id))
-                    exit_index[intersection_id] = (i-(self.exit_interval-1))//self.exit_interval
-
-            output = self.add_mean(self.tail(x + self.body[-1](res)))
-            return output, exit_index, decision
+        output = self.add_mean(self.tail(x + self.body[-1](res)))
+        return output, exit_index, decision
 
     def load_state_dict(self, state_dict, strict=False):
         own_state = self.state_dict()

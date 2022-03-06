@@ -6,7 +6,7 @@ parser = argparse.ArgumentParser(description='EDSR and MDSR')
 
 parser.add_argument('--debug', action='store_true', default=False,
                     help='Enables debug mode')
-parser.add_argument('--template', default='EDSR_dytest',
+parser.add_argument('--template', default='EDSR',
                     help='You can set various templates in option.py')
 
 # Hardware specifications
@@ -211,6 +211,8 @@ parser.add_argument("--n_test_samples", type=int, default=20,
                     help="the number of test samples on every bins")
 parser.add_argument("--decision", action="store_true", default=False,
                     help='use early-exit decision maker')
+parser.add_argument("--check", action="store_true", default=False,
+                    help='check gt signal')
 parser.add_argument("--exit_threshold", type=float, default=0.8,
                     help='early exit decision threshold')
 parser.add_argument("--step", type=int, default=180,
@@ -219,6 +221,8 @@ parser.add_argument("--n_parallel", type=int, default=500,
                     help='number of patches when using DynamicSR to restore LR patches in parallel')
 parser.add_argument("--add_mask", action="store_true", default=False, 
                     help="save SR images with exit index mask")
+parser.add_argument("--strategy", type=str, default="normal", 
+                    help="strategy for training")
 
 # AdaDSR specifications
 parser.add_argument("--ada", action="store_true", default=False, 
@@ -227,6 +231,16 @@ parser.add_argument("--ada_depth", type=int, default=32,
                     help="layer depth when inference adaDSR")
 parser.add_argument('--lambda_pred', type=float, default=0.01,
                     help="lambda of depth loss")
+
+# ECBSR specifications
+parser.add_argument("--m_ecbsr", type=int, default=16,
+                    help="depth of ecbsr")
+parser.add_argument("--c_ecbsr", type=int, default=64,
+                    help="channels of ecb")
+parser.add_argument("--idt_ecbsr", type=int, default=2,
+                    help="depth-multiplier of 1x1-3x3-conv in ecb")
+parser.add_argument("--dm_ecbsr", type=int, default=0,
+                    help="incorporate idt in ecb")
 
 args = parser.parse_args()
 template.set_template(args)

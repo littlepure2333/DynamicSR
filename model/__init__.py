@@ -13,7 +13,8 @@ class Model(nn.Module):
 
         self.scale = args.scale
         self.idx_scale = 0
-        self.input_large = (args.model == 'VDSR')
+        # self.input_large = (args.model == 'VDSR')
+        self.input_large = False
         self.self_ensemble = args.self_ensemble
         self.chop = args.chop
         self.precision = args.precision
@@ -102,7 +103,7 @@ class Model(nn.Module):
         if load_from:
             self.model.load_state_dict(load_from, strict=False)
 
-    def forward_chop(self, *args, shave=10, min_size=160000):
+    def forward_chop(self, *args, shave=16, min_size=640000):
         scale = 1 if self.input_large else self.scale[self.idx_scale]
         n_GPUs = min(self.n_GPUs, 4)
         # height, width
@@ -123,7 +124,9 @@ class Model(nn.Module):
         if h * w < 4 * min_size:
             for i in range(0, 4, n_GPUs):
                 x = [x_chop[i:(i + n_GPUs)] for x_chop in x_chops]
+                # print("x",x[0].shape)
                 y = P.data_parallel(self.model, *x, range(n_GPUs))
+                # print("y",y.shape)
                 if not isinstance(y, list): y = [y]
                 if not y_chops:
                     y_chops = [[c for c in _y.chunk(n_GPUs, dim=0)] for _y in y]

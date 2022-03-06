@@ -19,6 +19,11 @@ class ECBSR(nn.Module):
         self.with_idt = args.idt_ecbsr 
         self.n_colors = args.n_colors
 
+        self.test_only = args.test_only
+        self.exit_interval = args.exit_interval
+        self.exit_threshold = args.exit_threshold
+
+
         self.dm = args.dm_ecbsr
         self.act_type = args.act
         self.upsample = nn.Upsample(scale_factor=self.scale, mode='bicubic', align_corners=False)
@@ -35,23 +40,59 @@ class ECBSR(nn.Module):
         # define the tail
         m_tail = [nn.PixelShuffle(self.scale)]
 
+        # define early-exiting decision-maker
+        m_eedm = [
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(self.n_feats,1),
+            nn.Tanh()
+        ]
+
         self.head = nn.Sequential(*m_head)
         self.body = nn.Sequential(*m_body)
         self.tail = nn.Sequential(*m_tail)
+        self.eedm = nn.Sequential(*m_eedm)
 
     def forward(self, x):
-        # head = self.head(x)
-        # body = self.body(head)
-        # x = F.pixel_unshuffle(self.upsample(x), self.scale)
-        # out = self.tail(body) + x
-        # out  = self.upsampler(out)
-        unshuffle_x = F.pixel_unshuffle(self.upsample(x), self.scale)
-        x = self.head(x)
-        res = self.body(x)
-        res += unshuffle_x
-        x  = self.tail(res)
-        
-        return x
+        if not self.test_only: # training mode / eval mode
+            unshuffle_x = F.pixel_unshuffle(self.upsample(x), self.scale)
+            x = self.head(x)
+            res = x
+            outputs = []
+            decisions = []
+
+            for i, layer in enumerate(self.body[:-1]):
+                res = layer(res)
+                if i % self.exit_interval == (self.exit_interval-1):
+                    output = self.tail(unshuffle_x + self.body[-1](res))
+                    decision = self.eedm(res)
+                    outputs.append(output)
+                    decisions.append(decision)
+            return outputs, decisions
+        else: # test mode
+            unshuffle_x = F.pixel_unshuffle(self.upsample(x), self.scale)
+            x = self.head(x)
+            res = x * 1.0 # to assign, avoid just reference
+
+            exit_index = torch.ones(x.shape[0],device=x.device) * (-1.)
+            pass_index = torch.arange(0,x.shape[0],device=x.device)
+            for i, layer in enumerate(self.body[:-1]):
+                if len(pass_index) > 0:
+                    res[pass_index,...] = layer(res[pass_index,...])
+                if i % self.exit_interval == (self.exit_interval-1):
+                    decision = self.eedm(res)
+                    pass_index = torch.where(decision<self.exit_threshold)[0]
+
+                    remain_id = torch.where(exit_index < 0.0)[0]
+                    exit_id = torch.where(decision>=self.exit_threshold)[0]
+                    intersection_id = []
+                    for id in exit_id:
+                        if id in remain_id: intersection_id.append(int(id))
+                    exit_index[intersection_id] = (i-(self.exit_interval-1))//self.exit_interval
+
+            output = self.tail(unshuffle_x + self.body[-1](res))
+            return output, exit_index, decision
+
 
     def load_state_dict(self, state_dict, strict=True):
         own_state = self.state_dict()

@@ -23,6 +23,8 @@ elif args.match:
     from trainer_match import Trainer
 elif args.decision:
     from trainer_decision import Trainer
+elif args.check:
+    from trainer_check import Trainer
 elif args.ada:
     from trainer_ada import Trainer
 else:
@@ -56,6 +58,7 @@ def main():
             while not t.terminate():
                 t.train()
                 t.test()
+            # TODO add final test
 
             checkpoint.done()
 

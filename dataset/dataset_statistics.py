@@ -12,7 +12,7 @@ import glob
 
 if __name__ == '__main__':
     ################## parameters
-    scale = 4
+    scale = 2
     hr_patch_size = 192 # the size is for hr patch
     lr_dir = '/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X{}/'.format(scale)
     suffix = "_Canny_p192_s24.pt"
@@ -20,6 +20,7 @@ if __name__ == '__main__':
 
     files = glob.glob(lr_dir+'*x{}'.format(scale)+suffix)
     files.sort()
+    files = files[-10:]
     print('number of files:', len(files))
 
     id_iy_ix_metric_list = []
@@ -45,7 +46,7 @@ if __name__ == '__main__':
 
 
     # save patch index sorted by psnr
-    save_file = lr_dir+'statistics'+suffix
+    save_file = lr_dir+'statistics_val'+suffix
     # print("saving {}".format(save_file))
     with open(save_file, 'wb') as _f:
         pickle.dump(all_id_iy_ix_metric, _f)
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     # metric = np.log(metric+1)
     # hist, bin_edges = np.histogram(metric, bins=32)
     
-    plt.hist(metric, bins=320) 
+    plt.hist(metric, bins=10) 
     plt.title("histogram") 
     plt.xlabel('metric')
     plt.ylabel('frequency')

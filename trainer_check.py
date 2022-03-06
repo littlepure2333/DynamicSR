@@ -14,7 +14,6 @@ from model.patchnet import PatchNet
 # import lpips
 import time
 from data.utils_image import calculate_ssim
-from pytorch_msssim import ssim
 
 class Trainer():
     def __init__(self, args, loader, my_model, my_loss, ckp):
@@ -153,7 +152,14 @@ class Trainer():
 
         epoch = self.optimizer.get_last_epoch()
         self.ckp.write_log('\nEvaluation:')
-        exit_len = int(self.args.n_resblocks/self.args.exit_interval)
+        if self.args.model.find("RCAN") >= 0:
+            exit_len = int(self.args.n_resgroups/self.args.exit_interval)
+        elif self.args.model.find("EDSR") >= 0:
+            exit_len = int(self.args.n_resblocks/self.args.exit_interval)
+        elif self.args.model.find("VDSR") >= 0:
+            exit_len = int((self.args.n_resblocks-2)/self.args.exit_interval)
+        elif self.args.model.find("FSRCNN") >= 0:
+            exit_len = int(4/self.args.exit_interval)
         self.ckp.add_log(
             torch.zeros(1, len(self.loader_test), exit_len)
         )
@@ -171,28 +177,30 @@ class Trainer():
 
                 for lr, hr, filename in tqdm(d, ncols=80):
                     lr, hr = self.prepare(lr, hr)
-                    sr = self.model(lr, idx_scale)
-                    for i, sr_i in enumerate(sr):
+                    sr, decisions = self.model(lr, idx_scale)
+                    # for i, sr_i in enumerate(sr):
+                    pre_psnr = 0
+                    de_gt_list = []
+                    de_list = []
+                    for i, (sr_i, de_i) in enumerate(zip(sr, decisions)):
                         sr_i = utility.quantize(sr_i, self.args.rgb_range)
                         save_dict['SR-{}'.format(i)] = sr_i
-                        item_psnr = utility.calc_psnr(sr_i, hr, scale, self.args.rgb_range, dataset=d).cpu()
-                        self.ckp.log[-1, idx_data, i] += item_psnr
+                        now_psnr = utility.calc_psnr(sr_i, hr, scale, self.args.rgb_range)
+                        de_i_gt = 1 - torch.tanh(torch.tensor(now_psnr - pre_psnr))
+                        pre_psnr = now_psnr
+                        self.ckp.log[-1, idx_data, i] += now_psnr.cpu()
+                        de_gt_list.append(de_i_gt)
+                        de_list.append(de_i)
                     
-                    b,c,h,w = sr_i.size()
+                    print(de_gt_list)
+                    print(de_list)
+                    
                     if self.ssim:
                         sr_i_np = sr_i.squeeze().cpu().permute(1,2,0).numpy()
                         hr_np = hr.squeeze().cpu().permute(1,2,0).numpy()
                         ssim = calculate_ssim(sr_i_np, hr_np)
                         ssim_total += ssim
-                    # if self.lpips_vgg:
-                        #print('sr',torch.reshape(torch.Tensor(sr),(1,c,h,w)).size())
-                        #print('hr',torch.reshape(torch.Tensor(hr),(1,c,h,w)).size())
-                    #     lpips_vgg = self.loss_fn_vgg(torch.reshape(torch.Tensor(sr_i),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
-                    #     lpips_vgg_total += lpips_vgg
-                    # if self.lpips_alex:
-                    #     lpips_alex = self.loss_fn_alex(torch.reshape(torch.Tensor(sr_i),(b,c,h,w)),torch.reshape(torch.Tensor(hr),(b,c,h,w)))
-                    #     lpips_alex_total += lpips_alex
-                        #print('alex',lpips_alex_total[0][0][0][0]/len(d),type(lpips_alex_total))
+
                     if self.args.save_gt:
                         save_dict['LR'] = lr
                         save_dict['HR'] = hr
@@ -232,22 +240,6 @@ class Trainer():
                             ssim_total/len(d)
                         )
                     )
-                # if self.lpips_vgg:
-                #      self.ckp.write_log(
-                #         '[{} x{}]\tLPIPS-vgg: {:.4f}'.format(
-                #             d.dataset.name,
-                #             scale,
-                #             lpips_vgg_total[0][0][0][0]/len(d)
-                #         )
-                #     )
-                # if self.lpips_alex:
-                #      self.ckp.write_log(
-                #         '[{} x{}]\tLPIPS-alex: {:.4f}'.format(
-                #             d.dataset.name,
-                #             scale,
-                #             lpips_alex_total[0][0][0][0]/len(d)
-                #         )
-                #     )
 
         self.ckp.write_log('Forward: {:.2f}s\n'.format(timer_test.toc()))
         self.ckp.write_log('Saving...')
@@ -319,6 +311,7 @@ class Trainer():
                     timer_pre.tic()
                     lr, hr = self.prepare(lr, hr) # (B,C,H,W)
                     lr_list, num_h, num_w, new_h, new_w = utility.crop_parallel(lr, self.patch_size//scale, self.step//scale)
+                    hr_list, _, _, _, _ = utility.crop_parallel(hr, self.patch_size, self.step)
                     timer_pre.hold()
                     sr_list = torch.Tensor()
                     exit_index_list = torch.Tensor()
@@ -328,7 +321,11 @@ class Trainer():
                     pbar = tqdm(range(len(lr_list)//self.args.n_parallel + 1), ncols=120)
                     for lr_patch_index in pbar:
                         timer_model.tic()
-                        sr_patches, exit_index, decision = self.model(lr_list[lr_patch_index*self.args.n_parallel:(lr_patch_index+1)*self.args.n_parallel], idx_scale)
+                        input = (
+                            lr_list[lr_patch_index*self.args.n_parallel:(lr_patch_index+1)*self.args.n_parallel],
+                            hr_list[lr_patch_index*self.args.n_parallel:(lr_patch_index+1)*self.args.n_parallel]
+                        )
+                        sr_patches, exit_index, decision = self.model(input, idx_scale)                      
                         torch.cuda.synchronize()
                         timer_model.hold()
                         sr_list = torch.cat([sr_list, sr_patches.cpu()])
@@ -356,19 +353,14 @@ class Trainer():
 
                     avg_exit = utility.calc_avg_exit(exit_list[-1])
                     avg_flops, avg_flops_percent = utility.calc_flops(exit_list[-1], self.args.model, scale, self.args.exit_interval)
-                    # self.ckp.write_log("{}\tPSNR:{:.3f}\taverage exit:[{:.2f}/{}]\tFlops:{:.2f}GFlops ({:.2f}%) pass time:{:.3f}s".format(filename, item_psnr, avg_exit, exit_len-1, avg_flops, avg_flops_percent, pass_time))
+                    self.ckp.write_log("{}\tPSNR:{:.3f}\taverage exit:[{:.2f}/{}]\tFlops:{:.2f}GFlops ({:.2f}%) pass time:{:.3f}s".format(filename, item_psnr, avg_exit, exit_len-1, avg_flops, avg_flops_percent, pass_time))
                     psnr_list.append(item_psnr)
 
                     if self.ssim:
-                        ssim_item = ssim(sr, hr, data_range=255, size_average=False).item()
-                        # print(ssim_val)
-                        # sr_np = sr.squeeze().cpu().permute(1,2,0).numpy()
-                        # hr_np = hr.squeeze().cpu().permute(1,2,0).numpy()
-                        # ssim_item = calculate_ssim(sr_np, hr_np)
-                        ssim_total += ssim_item
-                        self.ckp.write_log("{}\tPSNR:{:.3f}\tSSIM:{:.4f}\taverage exit:[{:.2f}/{}]\tFlops:{:.2f}GFlops ({:.2f}%) pass time:{:.3f}s".format(filename, item_psnr, ssim_item, avg_exit, exit_len-1, avg_flops, avg_flops_percent, pass_time))
-                    else:
-                        self.ckp.write_log("{}\tPSNR:{:.3f}\taverage exit:[{:.2f}/{}]\tFlops:{:.2f}GFlops ({:.2f}%) pass time:{:.3f}s".format(filename, item_psnr, avg_exit, exit_len-1, avg_flops, avg_flops_percent, pass_time))
+                        sr_np = sr.squeeze().cpu().permute(1,2,0).numpy()
+                        hr_np = hr.squeeze().cpu().permute(1,2,0).numpy()
+                        ssim = calculate_ssim(sr_np, hr_np)
+                        ssim_total += ssim
 
                     if self.args.save_gt:
                         save_dict['LR'] = lr
@@ -395,33 +387,25 @@ class Trainer():
                         psnr_list
                     )
                 )
+                self.ckp.write_log(
+                    '[{} x{}] PSNR: {:.3f}\tThreshold: {}\tAverage exits:[{:.2f}/{}]\tFlops:{:.2f}GFlops ({:.3f}%) avg pass time: {:.2f}s'.format(
+                        d.dataset.name,
+                        scale,
+                        self.ckp.log[-1, idx_data, -1],
+                        self.args.exit_threshold,
+                        AVG_exit,
+                        exit_len-1,
+                        AVG_flops,
+                        AVG_flops_percent,
+                        AVG_pass_time
+                    )
+                )
                 if self.ssim:
                     self.ckp.write_log(
-                        '[{} x{}] PSNR: {:.3f}\tSSIM: {:.4f}\tThreshold: {}\tAverage exits:[{:.2f}/{}]\tFlops:{:.2f}GFlops ({:.3f}%) avg pass time: {:.2f}s'.format(
+                        '[{} x{}]\tSSIM: {:.4f}'.format(
                             d.dataset.name,
                             scale,
-                            self.ckp.log[-1, idx_data, -1],
-                            ssim_total/len(d),
-                            self.args.exit_threshold,
-                            AVG_exit,
-                            exit_len-1,
-                            AVG_flops,
-                            AVG_flops_percent,
-                            AVG_pass_time
-                        )
-                    )
-                else:
-                    self.ckp.write_log(
-                        '[{} x{}] PSNR: {:.3f}\tThreshold: {}\tAverage exits:[{:.2f}/{}]\tFlops:{:.2f}GFlops ({:.3f}%) avg pass time: {:.2f}s'.format(
-                            d.dataset.name,
-                            scale,
-                            self.ckp.log[-1, idx_data, -1],
-                            self.args.exit_threshold,
-                            AVG_exit,
-                            exit_len-1,
-                            AVG_flops,
-                            AVG_flops_percent,
-                            AVG_pass_time
+                            ssim_total/len(d)
                         )
                     )
 
@@ -593,10 +577,11 @@ class Trainer():
 
     def terminate(self):
         if self.args.test_only:
-            if self.args.model in ['EDSR', 'RCAN', 'FSRCNN', 'ECBSR', 'VDSR']:
-                self.test_only_static()
-            elif self.args.model in ['EDSR_decision', 'RCAN_decision', 'FSRCNN_decision', 'ECBSR_decision', 'VDSR_decision']:
-                self.test_only_dynamic()
+            # if self.args.model in ['EDSR', 'RCAN', 'FSRCNN']:
+            #     self.test_only_static()
+            # elif self.args.model in ['EDSR_decision', 'RCAN_decision', 'FSRCNN_decision']:
+            #     self.test_only_dynamic()
+            self.test_only_dynamic()
             return True
 
         else:

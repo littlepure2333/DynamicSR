@@ -13,9 +13,14 @@ log/
 model/lib/build
 model/lib/*.egg-info
 model/lib/*.so
+*.tar
 *.tar.gz
 *.txt
 /temp
+scripts/
+plot/
+plot_eccv/
+sample/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

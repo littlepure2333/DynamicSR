@@ -25,6 +25,11 @@ class Trainer():
         self.loader_train = loader.loader_train
         self.loader_test = loader.loader_test
         self.model = my_model
+        if self.args.strategy == "eedm":
+            for para in self.model.model.parameters():
+                para.requires_grad = False
+            for para in self.model.model.eedm.parameters():
+                para.requires_grad = True
         self.loss = my_loss
         self.optimizer = utility.make_optimizer(args, self.model)
         self.device = torch.device('cpu' if args.cpu else 'cuda')
@@ -97,13 +102,32 @@ class Trainer():
             #     loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i, de_i_gt)
 
             # sum decision 'de3' # relative psnr, tanh
-            pre_psnr = 0
-            for sr_i, de_i in zip(sr, decisions):
-                now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
-                de_i_gt = 1 - torch.tanh(torch.tensor(now_psnr - pre_psnr))
-                pre_psnr = now_psnr
-                loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i, de_i_gt)
+            if self.args.strategy == "de3":
+                pre_psnr = 0
+                for sr_i, de_i in zip(sr, decisions):
+                    now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
+                    de_i_gt = 1 - torch.tanh(torch.tensor(now_psnr - pre_psnr))
+                    pre_psnr = now_psnr
+                    loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i.T.squeeze(), de_i_gt)
+                
+            # multi-exits
+            elif self.args.strategy == "multi":
+                for sr_i in sr:
+                    loss = loss + self.loss(sr_i, hr)
+                
+            # only train early-exit decision maker
+            elif self.args.strategy == "eedm":
+                pre_psnr = 0
+                for sr_i, de_i in zip(sr, decisions):
+                    now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
+                    de_i_gt = 1 - torch.tanh(torch.tensor(now_psnr - pre_psnr))
+                    pre_psnr = now_psnr
+                    loss = loss + self.loss(de_i.T.squeeze(), de_i_gt)
+                    # print(de_i.T.squeeze())
+                    # print(de_i_gt)
 
+            else:
+                raise ValueError
             
             loss.backward()            
 
@@ -140,6 +164,10 @@ class Trainer():
             exit_len = int(self.args.n_resgroups/self.args.exit_interval)
         elif self.args.model.find("EDSR") >= 0:
             exit_len = int(self.args.n_resblocks/self.args.exit_interval)
+        elif self.args.model.find("VDSR") >= 0:
+            exit_len = int((self.args.n_resblocks-2)/self.args.exit_interval)
+        elif self.args.model.find("ECBSR") >= 0:
+            exit_len = int((self.args.m_ecbsr)/self.args.exit_interval)
         elif self.args.model.find("FSRCNN") >= 0:
             exit_len = int(4/self.args.exit_interval)
         self.ckp.add_log(

@@ -48,7 +48,8 @@ class Trainer():
 
         timer_test = utility.timer()
         if self.args.save_results: self.ckp.begin_background()
-        for bins_index in range(self.args.bins):
+        # for bins_index in range(self.args.bins):
+        for bins_index in [self.args.bin_index]:
             self.loader_test[0].dataset.bins_index = bins_index
             runtime_len = self.args.n_test_samples if len(self.loader_test[0].dataset) > self.args.n_test_samples else len(self.loader_test[0].dataset)
             self.ckp.add_log(
@@ -71,11 +72,11 @@ class Trainer():
                                 sr_i = utility.quantize(sr_i, self.args.rgb_range)
                                 save_dict['SR-{}'.format(i)] = sr_i
                                 item_psnr = utility.calc_psnr(sr_i, hr, scale, self.args.rgb_range, dataset=d)
-                                self.ckp.log[-1, idx_data, i] += item_psnr
+                                self.ckp.log[-1, idx_data, i] += item_psnr.cpu()
                         elif self.args.model == "EDSR":
                             save_dict['SR'] = sr
                             item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
-                            self.ckp.log[-1, idx_data, 0] += item_psnr
+                            self.ckp.log[-1, idx_data, 0] += item_psnr.cpu()
                         else:
                             raise NotImplementedError
 

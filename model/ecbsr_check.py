@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from model.ecb import ECB
 # from ecb import ECB
 from model import common
+import utility
 
 def make_model(args, parent=False):
     return ECBSR(args)
@@ -18,6 +19,12 @@ class ECBSR(nn.Module):
         self.n_feats  = args.c_ecbsr
         self.with_idt = args.idt_ecbsr 
         self.n_colors = args.n_colors
+
+        self.args = args
+        self.test_only = args.test_only
+        self.exit_interval = args.exit_interval
+        self.exit_threshold = args.exit_threshold
+
 
         self.dm = args.dm_ecbsr
         self.act_type = args.act
@@ -35,23 +42,48 @@ class ECBSR(nn.Module):
         # define the tail
         m_tail = [nn.PixelShuffle(self.scale)]
 
+        # define early-exiting decision-maker
+        m_eedm = [
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(self.n_feats,1),
+            nn.Tanh()
+        ]
+
         self.head = nn.Sequential(*m_head)
         self.body = nn.Sequential(*m_body)
         self.tail = nn.Sequential(*m_tail)
+        self.eedm = nn.Sequential(*m_eedm)
 
-    def forward(self, x):
-        # head = self.head(x)
-        # body = self.body(head)
-        # x = F.pixel_unshuffle(self.upsample(x), self.scale)
-        # out = self.tail(body) + x
-        # out  = self.upsampler(out)
+    def forward(self, input):
+        x, hr = input
         unshuffle_x = F.pixel_unshuffle(self.upsample(x), self.scale)
         x = self.head(x)
-        res = self.body(x)
-        res += unshuffle_x
-        x  = self.tail(res)
-        
-        return x
+        res = x * 1.0 # to assign, avoid just reference
+
+        exit_index = torch.ones(x.shape[0],device=x.device) * (-1.)
+        pass_index = torch.arange(0,x.shape[0],device=x.device)
+        pre_psnr = 0
+        for i, layer in enumerate(self.body[:-1]):
+            if len(pass_index) > 0:
+                res[pass_index,...] = layer(res[pass_index,...])
+            if i % self.exit_interval == (self.exit_interval-1):
+                sr_i = self.tail(unshuffle_x + self.body[-1](res))
+                now_psnr = utility.calc_psnr(sr_i, hr, self.scale, self.args.rgb_range)
+                decision = 1 - torch.tanh(torch.tensor(now_psnr - pre_psnr))
+                pre_psnr = now_psnr
+                pass_index = torch.where(decision<self.exit_threshold)[0]
+
+                remain_id = torch.where(exit_index < 0.0)[0]
+                exit_id = torch.where(decision>=self.exit_threshold)[0]
+                intersection_id = []
+                for id in exit_id:
+                    if id in remain_id: intersection_id.append(int(id))
+                exit_index[intersection_id] = (i-(self.exit_interval-1))//self.exit_interval
+
+        output = self.tail(unshuffle_x + self.body[-1](res))
+        return output, exit_index, decision
+
 
     def load_state_dict(self, state_dict, strict=True):
         own_state = self.state_dict()

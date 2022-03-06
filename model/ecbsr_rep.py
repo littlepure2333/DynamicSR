@@ -14,6 +14,7 @@ class ECBSR(nn.Module):
 
         scale = args.scale[0]
         self.scale = scale
+        kernel_size = 3
         self.n_stage  = args.m_ecbsr
         self.n_feats  = args.c_ecbsr
         self.with_idt = args.idt_ecbsr 
@@ -24,13 +25,13 @@ class ECBSR(nn.Module):
         self.upsample = nn.Upsample(scale_factor=self.scale, mode='bicubic', align_corners=False)
 
         # define the head
-        m_head = [ECB(self.n_colors, out_planes=self.n_feats, depth_multiplier=self.dm, act_type=self.act_type, with_idt = self.with_idt)]
+        m_head = [conv(self.n_colors, self.n_feats, kernel_size)]
 
         # define the body
         m_body = []
         for i in range(self.n_stage):
-            m_body.append(ECB(self.n_feats, out_planes=self.n_feats, depth_multiplier=self.dm, act_type=self.act_type, with_idt = self.with_idt))
-        m_body.append(ECB(self.n_feats, out_planes=self.scale * self.scale * self.n_colors, depth_multiplier=self.dm, act_type='linear', with_idt = self.with_idt))
+            m_body.append(conv(self.n_feats, self.n_feats, kernel_size))
+        m_body.append(conv(self.n_feats, self.scale * self.scale * self.n_colors, kernel_size))
 
         # define the tail
         m_tail = [nn.PixelShuffle(self.scale)]

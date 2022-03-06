@@ -12,10 +12,17 @@ class DIV2K_DYNAMIC(srdata.SRData):
         data_range = [r.split('-') for r in args.data_range.split('/')]
         self.trian = train
         self.bins = args.bins
-        with open(args.statistics_file, 'rb') as _f:
-            self.statistics = pickle.load(_f) # all_id_iy_ix_metric
-        # self.hist, self.bin_edges = np.histogram(self.statistics[:,-1], bins=self.bins)
-        self.hist = np.array([len(self.statistics)//args.bins for i in range(args.bins)])
+        if train:
+            with open(args.statistics_file, 'rb') as _f:
+                self.statistics = pickle.load(_f) # all_id_iy_ix_metric
+            # self.hist, self.bin_edges = np.histogram(self.statistics[:,-1], bins=self.bins)
+            self.hist = np.array([len(self.statistics)//args.bins for i in range(args.bins)])
+        else:
+            statistics_val_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X2/statistics_val_Canny_p192_s24.pt"
+            with open(statistics_val_file, 'rb') as _f:
+                self.statistics = pickle.load(_f) # all_id_iy_ix_metric
+            self.hist = [0, 1665, 1181, 1381, 947, 805, 745, 810, 1003, 1369] # L2 and L1 are same
+        
         self.bins_index = 0 if args.bin_index is None else args.bin_index
         if train:
             data_range = data_range[0]

@@ -3,6 +3,7 @@ from option import args # modify default template in option.py
 from mmcv.cnn import get_model_complexity_info
 from thop import profile
 import torch
+import time
 
 # edsr_decision
 # from model.edsr_decision import make_model
@@ -10,15 +11,13 @@ import torch
 # args.n_resblocks = 32
 # args.n_feats = 256
 # args.res_scale = 0.1
-# args.scale = [3]
 
 # edsr
-from model.edsr import make_model
-args.model = 'EDSR'
-args.n_resblocks = 32
-args.n_feats = 256
-args.res_scale = 0.1
-args.scale = [4]
+# from model.edsr import make_model
+# args.model = 'EDSR'
+# args.n_resblocks = 32
+# args.n_feats = 256
+# args.res_scale = 0.1
 
 # rcan_decision
 # from model.rcan_decision import make_model
@@ -26,29 +25,47 @@ args.scale = [4]
 # args.n_resgroups = 10
 # args.n_resblocks = 20
 # args.n_feats = 64
-# args.scale = [4]
 
 # rcan
-# from model.rcan import make_model
-# args.model = 'RCAN'
-# args.n_resgroups = 10
-# args.n_resblocks = 20
-# args.n_feats = 64
-# args.scale = [4]
+from model.rcan import make_model
+args.model = 'RCAN'
+args.n_resgroups = 10
+args.n_resblocks = 20
+args.n_feats = 64
 
 # fsrcnn_decision
 # from model.fsrcnn_decision import make_model
 # args.model = 'fsrcnn_decision'
-# args.scale = [3]
 
 # fsrcnn
 # from model.fsrcnn import make_model
 # args.model = 'fsrcnn'
-# args.scale = [2]
+
+# vdsr_decision
+# from model.vdsr_decision import make_model
+# args.model = 'VDSR_decision'
+# args.n_resblocks = 20
+# args.n_feats = 64
+
+# vdsr
+# from model.vdsr import make_model
+# args.model = 'VDSR'
+# args.n_resblocks = 20
+# args.n_feats = 64
+
+# ecbsr
+# from model.ecbsr_rep import make_model
+# args.model = 'ECBSR_rep'
+# args.m_ecbsr = 16
+# args.c_ecbsr = 64
+# args.dm_ecbsr = 2
+# args.act = 'prelu'
 
 
+# print flops
+args.scale = [2]
 m = make_model(args)
-stat(m, (3, 40, 40))
+stat(m, (3, 48, 48))
 # print(m)
 
 # mmcv for RCAN
@@ -107,16 +124,35 @@ EDSR x4: (3,40,40)
     tail: 20,003,712,000
     eedm: 256
     total:80,440,108,800 (80.44GFlops)
+'''
+
+'''
+EDSR x2: (3,48,48)
+    head: 17,243,136
+    body: 87,010,836,480 = 32 * 2,719,088,640
+    tail: 6,861,450,240
+    eedm: 
+    total:93,889,529,856 (93.89GFlops)
+    list: 9.60,12.32,15.04,17.76,20.47,23.19,25.91,28.63,31.35,34.07,36.79,39.51,42.23,44.95,47.67,50.38,53.10,55.82,58.54,61.26,63.98,66.70,69.42,72.14,74.86,77.57,80.29,83.01,85.73,88.45,91.17,93.89
+
+EDSR x3: (3,48,48)
+    head: 17,381,376
+    body: 87,010,836,480 = 32 * 2,719,088,640
+    tail: 13,738,832,640
+    eedm: 
+    total:100,767,050,496 (100.77GFlops)
+    list: 16.48,19.19,21.91,24.63,27.35,30.07,32.79,35.51,38.23,40.95,43.67,46.39,49.10,51.82,54.54,57.26,59.98,62.70,65.42,68.14,70.86,73.58,76.30,79.01,81.73,84.45,87.17,89.89,92.61,95.33,98.05,100.77
+
 
 EDSR x4: (3,48,48)
-    head: 16,985,088
-    body: 86,994,441,216 = 32 * 2,718,576,288
+    head: 17,574,912
+    body: 87,010,836,480 = 32 * 2,719,088,640
     tail: 28,805,345,280
     eedm: 256
     total:115,833,756,672 (115.83GFlops)
-
-
+    list: 31.54,34.26,36.98,39.70,42.42,45.14,47.86,50.58,53.29,56.01,58.73,61.45,64.17,66.89,69.61,72.33,75.05,77.77,80.49,83.20,85.92,88.64,91.36,94.08,96.80,99.52,102.24,104.96,107.68,110.40,113.11,115.83
 '''
+
 
 '''
 RCAN x2: (3,32,32)
@@ -145,39 +181,151 @@ RCAN x4: (3,32,32)
 '''
 
 '''
+RCAN x2: (3,48,48)
+    head: 4,267,008
+    body: 34,913,273,920 = 10 * 3,491,327,392
+    tail: 441,363,456
+    eedm: 
+    total:35,358,904,384 (35.36GFlops)
+    list: 3.94,7.43,10.92,14.41,17.90,21.39,24.88,28.38,31.87,35.36
+
+
+RCAN x3: (3,48,48)
+    head: 4,181,248
+    body: 34,913,273,920 = 10 * 3,491,327,392
+    tail: 886,715,136
+    eedm: 
+    total:35,804,394,304 (35.8GFlops)
+    list: 4.38,7.87,11.36,14.86,18.35,21.84,25.33,28.82,32.31,35.80
+
+
+RCAN x4: (3,48,48)
+    head: 4,598,784
+    body: 34,913,273,920 = 10 * 3,491,327,392
+    tail: 1,850,535,936
+    eedm: 
+    total:36,768,408,640 (36.77GFlops)
+    list: 5.35,8.84,12.33,15.82,19.31,22.80,26.29,29.79,33.28,36.77
+
+'''
+
+'''
+VDSR x2: (3,32,32)
+    head: 7,704,576
+    body: 5,357,568 = 18 * 151,519,232
+    tail: 7,090,176
+    eedm: 
+    total:2,742,140,928 (2.74GFlops)
+
+
+VDSR x3: (3,32,32)
+    head: 17,335,296
+    body: 6,136,528,896 = 18 * 340,918,272
+    tail: 15,952,896
+    eedm: 
+    total:6,169,817,088 (6.17GFlops)
+
+
+VDSR x4: (3,32,32)
+    head: 30,818,304
+    body: 10,909,384,704 = 18 * 606,076,928
+    tail: 28,360,704
+    eedm: 
+    total:10,968,563,712.0 (10.97GFlops)
+'''
+
+'''
+VDSR x2: (3,48,48)
+    head: 17,335,296
+    body: 6,136,528,896 = 18 * 340,918,272
+    tail: 15,952,896
+    eedm:
+    total:6,169,817,088 (6.17GFlops)
+    list: 0.37,0.72,1.06,1.40,1.74,2.08,2.42,2.76,3.10,3.44,3.78,4.12,4.47,4.81,5.15,5.49,5.83,6.17
+
+VDSR x3: (3,48,48)
+    head: 39,004,416
+    body: 13,807,190,016 = 18 * 767,066,112
+    tail: 35,894,016
+    eedm:
+    total:13,882,088,448 (13.88GFlops)
+    list: 0.84,1.61,2.38,3.14,3.91,4.68,5.44,6.21,6.98,7.75,8.51,9.28,10.05,10.81,11.58,12.35,13.12,13.88
+
+VDSR x4: (3,48,48)
+    head: 69,341,184
+    body: 24,546,115,584 = 18 * 1,363,673,088
+    tail: 63,811,584
+    eedm:
+    total:24,679,268,352 (24.68GFlops)
+    list: 1.50,2.86,4.22,5.59,6.95,8.32,9.68,11.04,12.41,13.77,15.13,16.50,17.86,19.22,20.59,21.95,23.32,24.68
+'''
+
+'''
+ECBSR x2: (3,32,32)
+    head: 
+    body: 
+    tail: 
+    eedm:
+    total:
+
+
+ECBSR x3: (3,32,32)
+    head: 
+    body: 
+    tail: 
+    eedm:
+    total:
+
+
+ECBSR x4: (3,32,32)
+    head: 1,851,392
+    body: 605,028,352 = 16 * 37,814,272
+    tail: 28,360,704
+    eedm:
+    total:635,240,448 (635.24MFlops)
+'''
+
+'''
+ECBSR x2: (3,48,48)
+    head: 4,137,984
+    body: 1,361,313,792 = 16 * 85,082,112
+    tail: 15,952,896
+    eedm:
+    total:1,381,404,672 (1.38GFlops)
+    list: 0.11,0.19,0.28,0.36,0.45,0.53,0.62,0.70,0.79,0.87,0.96,1.04,1.13,1.21,1.30,1.38
+
+ECBSR x3: (3,48,48)
+    head: 4,149,504
+    body: 1,361,313,792 = 16 * 85,082,112
+    tail: 35,894,016
+    eedm:
+    total:1,401,357,312 (1.4GFlops)
+    list: 0.13,0.21,0.30,0.38,0.47,0.55,0.64,0.72,0.81,0.89,0.98,1.06,1.15,1.23,1.32,1.40
+
+ECBSR x4: (3,48,48)
+    head: 4,165,632
+    body: 1,361,313,792 = 16 * 85,082,112
+    tail: 63,811,584
+    eedm:
+    total: 1,429,291,008 (1.43GFlops)
+    list: 0.15,0.24,0.32,0.41,0.49,0.58,0.66,0.75,0.83,0.92,1.00,1.09,1.17,1.26,1.34,1.43
+'''
+
+
+'''
 FSRCNN x2: (3,32,32)
     head: 5,058,560
     body: 5,357,568 = 4 * 1,339,392
     tail: 745,472
     eedm: 12
     total:11,161,600 (11.16MFlops)
-
-
-FSRCNN x3: (3,32,32)
-    head: 
-    body: 
-    tail: 
-    eedm: 
-    total:
-
-
-FSRCNN x4: (3,32,32)
-    head: 
-    body: 
-    tail: 
-    eedm: 
-    total:
-
-
 '''
 
-
-
-# print(4300800+57344+688128+12288)
-# print(688128+57344)
-
+    # head: 4,267,008
+    # body: 34,913,273,920 = 10 * 3,491,327,392
+    # tail: 441,363,456
 
 # for i in range(10):
-#     b = 2043904+822460416+64+(i+1)*1551534086
+#     b = 4267008+441363456+(i+1)*3491327392
 #     print("{:.2f}".format(b/1000000000.0))
 
