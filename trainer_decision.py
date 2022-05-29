@@ -12,6 +12,8 @@ import torch.nn.utils as utils
 from tqdm import tqdm
 from model.patchnet import PatchNet
 # import lpips
+from torch.nn import functional as F
+
 
 from data.utils_image import calculate_ssim
 
@@ -88,10 +90,11 @@ class Trainer():
             #     loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i, de_i_gt)
 
             # sum decision 'de1' # absolute psnr
-            # for sr_i, de_i in zip(sr, decisions):
-            #     now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
-            #     de_i_gt = torch.sigmoid(now_psnr/10) # /10 is for scale
-            #     loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i, de_i_gt)
+            if self.args.strategy == "de1":
+                for sr_i, de_i in zip(sr, decisions):
+                    now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
+                    de_i_gt = torch.tanh(now_psnr/100) # /100 is for scale
+                    loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i, de_i_gt)
 
             # sum decision 'de2' # relative psnr, sigmoid
             # pre_psnr = 0
@@ -102,11 +105,20 @@ class Trainer():
             #     loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i, de_i_gt)
 
             # sum decision 'de3' # relative psnr, tanh
-            if self.args.strategy == "de3":
+            elif self.args.strategy == "de3":
                 pre_psnr = 0
                 for sr_i, de_i in zip(sr, decisions):
                     now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
                     de_i_gt = 1 - torch.tanh(torch.tensor(now_psnr - pre_psnr))
+                    pre_psnr = now_psnr
+                    loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i.T.squeeze(), de_i_gt)
+                
+            # sum decision 'de4' # relative psnr, tanh, 0-center
+            elif self.args.strategy == "de4":
+                pre_psnr = 0
+                for sr_i, de_i in zip(sr, decisions):
+                    now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
+                    de_i_gt = torch.tanh(torch.tensor(now_psnr - pre_psnr))
                     pre_psnr = now_psnr
                     loss = loss + self.loss(sr_i, hr) + self.de_loss(de_i.T.squeeze(), de_i_gt)
                 
@@ -121,6 +133,19 @@ class Trainer():
                 for sr_i, de_i in zip(sr, decisions):
                     now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
                     de_i_gt = 1 - torch.tanh(torch.tensor(now_psnr - pre_psnr))
+                    pre_psnr = now_psnr
+                    loss = loss + self.loss(de_i.T.squeeze(), de_i_gt)
+                    # print(de_i.T.squeeze())
+                    # print(de_i_gt)
+
+            # only train early-exit decision maker
+            elif self.args.strategy == "eedm1":
+                pre_psnr = 0
+                for sr_i, de_i in zip(sr, decisions):
+                    now_psnr = utility.calc_psnr(sr_i, hr, self.scale[0], self.args.rgb_range)
+                    de_i_gt = 1 - torch.tanh(torch.tensor(now_psnr - pre_psnr))
+                    de_i_gt = 1 - de_i_gt
+                    # de_i_gt = torch.tanh(torch.tensor(now_psnr - pre_psnr))
                     pre_psnr = now_psnr
                     loss = loss + self.loss(de_i.T.squeeze(), de_i_gt)
                     # print(de_i.T.squeeze())
@@ -170,6 +195,10 @@ class Trainer():
             exit_len = int((self.args.m_ecbsr)/self.args.exit_interval)
         elif self.args.model.find("FSRCNN") >= 0:
             exit_len = int(4/self.args.exit_interval)
+        elif self.args.model.find("RRDB") >= 0:
+            exit_len = int(self.args.n_resblocks/self.args.exit_interval)
+        elif self.args.model.find("SWINIR") >= 0:
+            exit_len = int(6/self.args.exit_interval)
         self.ckp.add_log(
             torch.zeros(1, len(self.loader_test), exit_len)
         )
@@ -187,7 +216,23 @@ class Trainer():
 
                 for lr, hr, filename in tqdm(d, ncols=80):
                     lr, hr = self.prepare(lr, hr)
-                    sr, decisions = self.model(lr, idx_scale)
+                    if self.args.model.find("SWINIR") >= 0:
+                        window_size = 8
+                        scale = self.args.scale[0]
+                        mod_pad_h, mod_pad_w = 0, 0
+                        _, _, h, w = lr.size()
+                        if h % window_size != 0:
+                            mod_pad_h = window_size - h % window_size
+                        if w % window_size != 0:
+                            mod_pad_w = window_size - w % window_size
+                        lr = F.pad(lr, (0, mod_pad_w, 0, mod_pad_h), 'reflect')
+                        sr, decisions = self.model(lr, idx_scale)
+                        for i in range(len(sr)):
+                            _, _, h, w = sr[i].size()
+                            sr[i] = sr[i][:, :, 0:h - mod_pad_h * scale, 0:w - mod_pad_w * scale]
+                    else:
+                        sr, decisions = self.model(lr, idx_scale)
+                    # sr, decisions = self.model(lr, idx_scale)
                     for i, sr_i in enumerate(sr):
                         sr_i = utility.quantize(sr_i, self.args.rgb_range)
                         save_dict['SR-{}'.format(i)] = sr_i

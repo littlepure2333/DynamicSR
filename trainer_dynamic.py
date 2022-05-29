@@ -146,7 +146,7 @@ class Trainer():
         self.loss.end_log(len(self.loader_train))
         self.error_last = self.loss.log[-1, -1]
         self.optimizer.schedule()
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
 
     def test(self):
         torch.set_grad_enabled(False)
@@ -292,6 +292,10 @@ class Trainer():
             exit_len = int((self.args.m_ecbsr)/self.args.exit_interval)
         elif self.args.model.find("FSRCNN") >= 0:
             exit_len = int(4/self.args.exit_interval)
+        elif self.args.model.find("RRDB") >= 0:
+            exit_len = int(self.args.n_resblocks/self.args.exit_interval)
+        elif self.args.model.find("SWINIR") >= 0:
+            exit_len = int(6/self.args.exit_interval)
         self.ckp.add_log(
             torch.zeros(1, len(self.loader_test), len(self.scale))
         )
@@ -313,8 +317,16 @@ class Trainer():
                 exit_list = torch.zeros((1,exit_len))
                 AVG_exit = 0
                 pass_time_list = []
+                total_exit_index_list = torch.Tensor()
 
+                # i = 1
                 for lr, hr, filename in d:
+                    # if i in [84,69,7]:
+                    #     i+=1
+                    # else: 
+                    #     i += 1
+                    #     continue
+                    # print(i)
                     pass_start = time.time()
                     timer_pre.tic()
                     lr, hr = self.prepare(lr, hr) # (B,C,H,W)
@@ -336,6 +348,8 @@ class Trainer():
                             exit_list[-1, int(index)] += 1
                         exit_index_list = torch.cat([exit_index_list,exit_index.cpu()])
 
+                    total_exit_index_list = torch.cat([total_exit_index_list,exit_index_list])
+                    # print(total_exit_index_list)
                     timer_post.tic()
                     sr = utility.combine(sr_list, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step)
                     pass_end = time.time()
@@ -431,7 +445,8 @@ class Trainer():
         if self.args.save_results:
             self.ckp.end_background()
 
-        self.ckp.save_exit_list(exit_list)
+        self.ckp.save_exit_list(total_exit_index_list)
+        # self.ckp.save_exit_list(exit_list)
 
         self.ckp.write_log(
             '[whole]\t {:.4f}s\n'.format(timer_test.toc()), refresh=True
@@ -462,7 +477,7 @@ class Trainer():
             torch.zeros(1, len(self.loader_test), len(self.scale))
         )
         self.model.eval()
-        self.warm_up()
+        # self.warm_up()
 
         self.ckp.write_log('\nEvaluation:')
         timer_test = utility.timer()
@@ -505,7 +520,6 @@ class Trainer():
 
                     item_psnr = utility.calc_psnr(sr, hr, scale, self.args.rgb_range, dataset=d)
                     self.ckp.log[-1, idx_data, idx_scale] += item_psnr.cpu()
-                    self.ckp.write_log("{}\tPSNR:{:3f}".format(filename, item_psnr))
                     psnr_list.append(item_psnr)
 
                     if self.ssim:
@@ -513,6 +527,9 @@ class Trainer():
                         hr_np = hr.squeeze().cpu().permute(1,2,0).numpy()
                         ssim = calculate_ssim(sr_np, hr_np)
                         ssim_total += ssim
+                        self.ckp.write_log("{}\tPSNR:{:.3f}\tSSIM:{:.4f}".format(filename, item_psnr, ssim))
+                    else:
+                        self.ckp.write_log("{}\tPSNR:{:3f}".format(filename, item_psnr))
 
                     if self.args.save_gt:
                         save_dict['LR'] = lr
@@ -535,21 +552,25 @@ class Trainer():
                         psnr_list
                     )
                 )
-                self.ckp.write_log(
-                    '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})'.format(
-                        d.dataset.name,
-                        scale,
-                        self.ckp.log[-1, idx_data, -1],
-                        best[0][idx_data, -1],
-                        best[1][idx_data, -1] + 1
-                    )
-                )
                 if self.ssim:
                     self.ckp.write_log(
-                        '[{} x{}]\tSSIM: {:.4f}'.format(
+                        '[{} x{}]\tPSNR: {:.3f}\tSSIM: {:.4f} (Best: {:.3f} @epoch {})'.format(
                             d.dataset.name,
                             scale,
-                            ssim_total/len(d)
+                            self.ckp.log[-1, idx_data, idx_scale],
+                            ssim_total/len(d),
+                            best[0][idx_data, idx_scale],
+                            best[1][idx_data, idx_scale] + 1
+                        )
+                    )
+                else:
+                    self.ckp.write_log(
+                        '[{} x{}]\tPSNR: {:.3f} (Best: {:.3f} @epoch {})'.format(
+                            d.dataset.name,
+                            scale,
+                            self.ckp.log[-1, idx_data, idx_scale],
+                            best[0][idx_data, idx_scale],
+                            best[1][idx_data, idx_scale] + 1
                         )
                     )
 
@@ -593,9 +614,9 @@ class Trainer():
 
     def terminate(self):
         if self.args.test_only:
-            if self.args.model in ['EDSR', 'RCAN', 'FSRCNN', 'ECBSR', 'VDSR']:
+            if self.args.model in ['EDSR', 'RCAN', 'FSRCNN', 'ECBSR', 'VDSR', 'ESPCN', 'RRDB', 'SWINIR']:
                 self.test_only_static()
-            elif self.args.model in ['EDSR_decision', 'RCAN_decision', 'FSRCNN_decision', 'ECBSR_decision', 'VDSR_decision']:
+            elif self.args.model in ['EDSR_decision', 'RCAN_decision', 'FSRCNN_decision', 'ECBSR_decision', 'VDSR_decision', 'RRDB_decision', 'SWINIR_decision']:
                 self.test_only_dynamic()
             return True
 

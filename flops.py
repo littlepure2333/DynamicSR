@@ -1,9 +1,11 @@
+from turtle import forward
 from torchstat import stat
 from option import args # modify default template in option.py
 from mmcv.cnn import get_model_complexity_info
 from thop import profile
 import torch
 import time
+from torch import nn
 
 # edsr_decision
 # from model.edsr_decision import make_model
@@ -27,11 +29,11 @@ import time
 # args.n_feats = 64
 
 # rcan
-from model.rcan import make_model
-args.model = 'RCAN'
-args.n_resgroups = 10
-args.n_resblocks = 20
-args.n_feats = 64
+# from model.rcan import make_model
+# args.model = 'RCAN'
+# args.n_resgroups = 10
+# args.n_resblocks = 20
+# args.n_feats = 64
 
 # fsrcnn_decision
 # from model.fsrcnn_decision import make_model
@@ -53,7 +55,29 @@ args.n_feats = 64
 # args.n_resblocks = 20
 # args.n_feats = 64
 
+# vdsr_decision
+# from model.vdsr_decision import make_model
+# args.model = 'VDSR_decision'
+# args.n_resblocks = 20
+# args.n_feats = 64
+
 # ecbsr
+# from model.ecbsr import make_model
+# args.model = 'ECBSR'
+# args.m_ecbsr = 16
+# args.c_ecbsr = 64
+# args.dm_ecbsr = 2
+# args.act = 'prelu'
+
+# ecbsr_decision
+# from model.ecbsr_decision import make_model
+# args.model = 'ECBSR_decision'
+# args.m_ecbsr = 16
+# args.c_ecbsr = 64
+# args.dm_ecbsr = 2
+# args.act = 'prelu'
+
+# ecbsr_rep
 # from model.ecbsr_rep import make_model
 # args.model = 'ECBSR_rep'
 # args.m_ecbsr = 16
@@ -61,28 +85,41 @@ args.n_feats = 64
 # args.dm_ecbsr = 2
 # args.act = 'prelu'
 
+# rrdb_decision
+# from model.rrdb_decision import make_model
+# args.model = 'RRDB_decision'
+# args.n_resblocks = 20
 
-# print flops
-args.scale = [2]
+# rrdb
+# from model.rrdb import make_model
+# args.model = 'RRDB'
+# args.n_resblocks = 20
+
+# SWINIR
+from model.swinir import make_model
+args.model = 'SWINIR'
+
+
 m = make_model(args)
-stat(m, (3, 48, 48))
+# print flops
+# args.scale = [4]
+# stat(m, (3, 48, 48))
 # print(m)
 
 # mmcv for RCAN
-# input_shape = (64,32,32)
-# m = m.body[0].body[0].body[3]
-# # print(m)
-# flops, params = get_model_complexity_info(m, input_shape)
-# split_line = '=' * 30
-# print('{0}\nInput shape: {1}\nFlops: {2}\nParams: {3}\n{0}'.format(
-# split_line, input_shape, flops, params))
+input_shape = (3,48,48)
+flops, params = get_model_complexity_info(m, input_shape)
+split_line = '=' * 30
+print('{0}\nInput shape: {1}\nFlops: {2}\nParams: {3}\n{0}'.format(
+split_line, input_shape, flops, params))
 
 
 # thop
-# input = torch.randn(1, 3, 32, 32)
+# input = torch.randn(1, 3, 48, 48)
 # macs, params = profile(m, inputs=(input, ))
 # from thop import clever_format
-# macs, params = clever_format([macs, params], "%.3f")
+# # macs, params = clever_format([macs, params], "%.3f")
+# params = clever_format([params], "%.3f")
 # print(params)
 
 
@@ -321,11 +358,35 @@ FSRCNN x2: (3,32,32)
     total:11,161,600 (11.16MFlops)
 '''
 
-    # head: 4,267,008
-    # body: 34,913,273,920 = 10 * 3,491,327,392
-    # tail: 441,363,456
 
-# for i in range(10):
-#     b = 4267008+441363456+(i+1)*3491327392
+'''
+RRDB x4: (3,48,48)
+    Total params: 14,539,780
+    head: 4,128,768
+    body: 33,155,481,600 = 20 * 1,657,774,080
+    tail: 3,218,927,616
+    eedm: 64
+    total: 36,388,948,996 (36.39GFlops)
+    list: 4.88,6.54,8.20,9.85,11.51,13.17,14.83,16.49,18.14,19.80,21.46,23.12,24.77,26.43,28.09,29.75,31.41,33.06,34.72,36.38
+'''
+
+'''
+SwinIR x4: (3,48,48)
+    Total params: 
+    head: 11,612,160
+    body: 27,471,052,800 = 6 * 4,578,508,800
+    tail: 1,925,591,040
+    eedm: 180
+    total: 29,408,256,000 (29.41GFlops)
+    list: 6.52, 11.09, 15.67, 20.25, 24.83, 29.41
+'''
+
+# head: 11,612,160
+# body: 27,471,052,800 = 6 * 4,578,508,800
+# tail: 1,925,591,040
+
+# for i in range(6):
+#     b = 11612160+1925591040+(i+1)*4578508800
 #     print("{:.2f}".format(b/1000000000.0))
 
+# 6.52, 11.09, 15.67, 20.25, 24.83, 29.41

@@ -284,6 +284,8 @@ class Trainer():
             exit_len = int((self.args.m_ecbsr)/self.args.exit_interval)
         elif self.args.model.find("FSRCNN") >= 0:
             exit_len = int(4/self.args.exit_interval)
+        elif self.args.model.find("RRDB") >= 0:
+            exit_len = int(self.args.n_resblocks/self.args.exit_interval)
         self.ckp.add_log(
             torch.zeros(1, len(self.loader_test), len(self.scale))
         )
@@ -305,6 +307,7 @@ class Trainer():
                 exit_list = torch.zeros((1,exit_len))
                 AVG_exit = 0
                 pass_time_list = []
+                total_exit_index_list = torch.Tensor()
 
                 for lr, hr, filename in d:
                     pass_start = time.time()
@@ -333,6 +336,7 @@ class Trainer():
                             exit_list[-1, int(index)] += 1
                         exit_index_list = torch.cat([exit_index_list,exit_index.cpu()])
 
+                    total_exit_index_list = torch.cat([total_exit_index_list,exit_index_list])
                     timer_post.tic()
                     sr = utility.combine(sr_list, num_h, num_w, new_h*scale, new_w*scale, self.patch_size, self.step)
                     pass_end = time.time()
@@ -370,6 +374,7 @@ class Trainer():
                         self.ckp.save_results_dynamic(d, filename[0], save_dict, scale)
                     # torch.cuda.empty_cache()
                     exit_list = torch.cat([exit_list,torch.zeros((1,exit_len))])
+                    # break
 
                 self.ckp.log[-1, idx_data, :] /= len(d)
 
@@ -415,7 +420,8 @@ class Trainer():
         if self.args.save_results:
             self.ckp.end_background()
 
-        self.ckp.save_exit_list(exit_list)
+        self.ckp.save_exit_list(total_exit_index_list)
+        # self.ckp.save_exit_list(exit_list)
 
         self.ckp.write_log(
             '[whole]\t {:.4f}s\n'.format(timer_test.toc()), refresh=True

@@ -506,6 +506,14 @@ def calc_flops(exit_list, model_name, scale, exit_interval):
         elif scale == 4:
             flops_list = torch.Tensor([0.15,0.24,0.32,0.41,0.49,0.58,0.66,0.75,0.83,0.92,1.00,1.09,1.17,1.26,1.34,1.43])
             flops_list = flops_list[exit_interval-1::exit_interval]
+    elif model_name.find("RRDB") >= 0:
+        if scale == 4:
+            flops_list = torch.Tensor([4.88,6.54,8.20,9.85,11.51,13.17,14.83,16.49,18.14,19.80,21.46,23.12,24.77,26.43,28.09,29.75,31.41,33.06,34.72,36.38])
+            flops_list = flops_list[exit_interval-1::exit_interval]
+    elif model_name.find("SWINIR") >= 0:
+        if scale == 4:
+            flops_list = torch.Tensor([6.52, 11.09, 15.67, 20.25, 24.83, 29.41])
+            flops_list = flops_list[exit_interval-1::exit_interval]
 
     num = exit_list.sum()
     flops = (flops_list*exit_list).sum() / num

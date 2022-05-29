@@ -12,6 +12,7 @@ from model.patchnet import PatchNet
 import lpips
 from pytorch_msssim import ssim
 from data.utils_image import calculate_ssim
+from torch.nn import functional as F
 
 class Trainer():
     def __init__(self, args, loader, my_model, my_loss, ckp):
@@ -143,7 +144,21 @@ class Trainer():
                     lr, hr = self.prepare(lr, hr)
                     timer_pre.hold()
                     timer_model.tic()
-                    sr = self.model(lr, idx_scale)
+                    if self.args.model.find("SWINIR") >= 0:
+                        window_size = 8
+                        scale = self.args.scale[0]
+                        mod_pad_h, mod_pad_w = 0, 0
+                        _, _, h, w = lr.size()
+                        if h % window_size != 0:
+                            mod_pad_h = window_size - h % window_size
+                        if w % window_size != 0:
+                            mod_pad_w = window_size - w % window_size
+                        lr = F.pad(lr, (0, mod_pad_w, 0, mod_pad_h), 'reflect')
+                        sr = self.model(lr, idx_scale)
+                        _, _, h, w = sr.size()
+                        sr = sr[:, :, 0:h - mod_pad_h * scale, 0:w - mod_pad_w * scale]
+                    else:
+                        sr = self.model(lr, idx_scale)
                     torch.cuda.synchronize()
                     timer_model.hold()
                     timer_post.tic()

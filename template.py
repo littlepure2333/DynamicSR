@@ -21,19 +21,21 @@ def set_template(args):
         args.res_scale = 0.1
         
         # data
-        args.scale = "2"   #############
+        args.scale = "4"   #############
         args.dir_data = dir_data
         args.ext = "sep"
-        # args.data_test = 'TEST8K'  #############
+        # args.data_test = 'DIV2K'  #############
+        args.data_test = 'B100'  #############
         if args.data_test == 'DIV2K':
             args.data_range = '801-900'
+            # args.data_range = '801-810'
         elif args.data_test == 'TEST8K':
             args.data_range = '1-100'
         # args.data_range = '1-16/801-900'
         args.patch_size = 192
 
         # device
-        args.device = "2"  #############
+        args.device = "0"  #############
         args.n_GPUs = 1
 
         # pipeline
@@ -58,12 +60,12 @@ def set_template(args):
         args.test_only = True
         # args.chop = True
         args.ssim = True
-        # args.save_results = True  ############
-        # args.save_gt = True      ############
-        args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
+        args.save_results = True  ############
+        args.save_gt = True      ############
+        # args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x3_e300_ps192_lr0.0001/model/model_best.pt"
-        # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_x{}_{}_test".format(today, args.model, args.scale, args.data_test)
+        args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt"
+        args.save = "{}_{}_x{}_{}_test_pic".format(today, args.model, args.scale, args.data_test)
 
         # resume
         # args.load = "20211103_EDSR_paper_x4_e600_ps192_lr0.0001"
@@ -161,36 +163,44 @@ def set_template(args):
         args.res_scale = 0.1
         
         # data
-        args.scale = "2"   #############
+        args.scale = "4"   #############
         args.dir_data = dir_data
         args.ext = "sep"
         # args.data_range = '1-16/801-802'
         args.patch_size = 192
 
         # device
-        args.device = "0,1"  #############
-        args.n_GPUs = 2
+        args.device = "1"  #############
+        args.n_GPUs = 1
 
         # pipeline
-        args.epochs = 300
+        args.epochs = 500
         args.lr = 1e-4
+        args.decay = "200-400"
         args.batch_size = 16
         args.print_every = 10
         args.decision = True
         args.strategy = "de3"
-        args.exit_interval = 2    ############
+        args.eedm = 3
+        args.exit_interval = 4    ############
         # args.save_results = True  ############
         # args.save_gt = True      ############
 
         # experiemnt
-        args.reset = True
-        # args.pre_train = "pretrained/EDSR_x2.pt"
-        # args.pre_train = "pretrained/EDSR_x3.pt"
-        # args.pre_train = "pretrained/EDSR_x4.pt"
-        args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
-        # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x3_e300_ps192_lr0.0001/model/model_best.pt"
+        # args.reset = True
+        # # args.pre_train = "pretrained/EDSR_x2.pt"
+        # # args.pre_train = "pretrained/EDSR_x3.pt"
+        # # args.pre_train = "pretrained/EDSR_x4.pt"
+        # # args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
+        # # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x3_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}".format(today, args.model, args.strategy, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval)
+        # args.save = "{}_{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}_eedm{}".format(today, args.model, args.strategy, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.eedm)
+        
+        # resume
+        args.reset = False
+        # args.load = "/data/shizun/experiment/20220529_EDSR_decision_de3_x4_e500_ps192_lr0.0001_n32_i4_eedm2/"
+        args.load = "/data/shizun/experiment/20220529_EDSR_decision_de3_x4_e500_ps192_lr0.0001_n32_i4_eedm3/"
+        args.resume = -1
 
     elif args.template == 'EDSR_multi':
         # model
@@ -279,7 +289,7 @@ def set_template(args):
         args.res_scale = 0.1
 
         # data
-        args.scale = "3"   #############
+        args.scale = "4"   #############
         args.dir_data = dir_data
         # args.data_test = 'TEST8K'  #############
         args.data_test = 'DIV2K'  #############
@@ -292,14 +302,14 @@ def set_template(args):
         args.step = 46*int(args.scale)
 
         # device
-        args.device = "1"  #############
+        args.device = "3"  #############
         args.n_GPUs = 1
 
         # pipeline
         args.check = True
         args.test_only = True     ############
-        args.exit_interval = 2    ############
-        args.exit_threshold = 1 ############
+        args.exit_interval = 4    ############
+        args.exit_threshold = 0.9 ############
         args.n_parallel = 500         ############
         # args.save_results = True  ############
         # args.save_gt = True     ############
@@ -307,10 +317,12 @@ def set_template(args):
 
         # experiment
         args.reset = True
-        args.pre_train = "/data/shizun/experiment/20220224_EDSR_decision_multi_x2_e300_ps192_lr0.0001_n32_i1/model/model_best.pt"
+        args.eedm = 1
+        # args.pre_train = "/data/shizun/experiment/20220224_EDSR_decision_multi_x2_e300_ps192_lr0.0001_n32_i1/model/model_best.pt"
         # args.pre_train = "/data/shizun/experiment/20220225_EDSR_decision_multi_x3_e300_ps192_lr0.0001_n32_i1/model/model_best.pt"
         # args.pre_train = "/data/shizun/experiment/20220222_EDSR_decision_multi_x4_e300_ps192_lr0.0001_n32_i1/model/model_best.pt"
-        args.save = "{}_{}_multi_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_check".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.exit_threshold)
+        args.pre_train = "/home/shizun/experiment/20220301_EDSR_decision_de3_x4_e300_ps192_lr0.0001_n32_i4/model/model_best.pt"
+        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_eedm{}_th{}_check".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.eedm, args.exit_threshold)
 
     elif args.template == 'EDSR_dytest':
         # model
@@ -324,13 +336,15 @@ def set_template(args):
         args.dir_data = dir_data
         # args.data_test = 'TEST8K'  #############
         args.data_test = 'DIV2K'  #############
+        # args.data_test = 'Urban100'  #############
+        # args.data_test = 'B100'  #############
         if args.data_test == 'DIV2K':
             args.data_range = '801-900'
         elif args.data_test == 'TEST8K':
             args.data_range = '1-100'
         args.ext = "sep"
-        args.patch_size = 40*int(args.scale)
-        args.step = 38*int(args.scale)
+        args.patch_size = 48*int(args.scale)
+        args.step = 46*int(args.scale)
 
         # device
         args.device = "2"  #############
@@ -341,7 +355,7 @@ def set_template(args):
         args.test_only = True     ############
         args.ssim = True
         args.exit_interval = 4    ############
-        args.exit_threshold = 1 ############
+        args.exit_threshold = 0 ############
         args.n_parallel = 500         ############
         # args.save_results = True  ############
         # args.save_gt = True     ############
@@ -349,11 +363,19 @@ def set_template(args):
 
         # experiment
         args.reset = True
+        args.strategy = "de3"
+        args.eedm = 1
+        # args.pre_train = "/home/shizun/experiment/20220301_EDSR_decision_de3_x2_e300_ps192_lr0.0001_n32_i1/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20220305_EDSR_decision_de3_x2_e300_ps192_lr0.0001_n32_i2/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20220301_EDSR_decision_de3_x2_e300_ps192_lr0.0001_n32_i4/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20220301_EDSR_decision_de3_x3_e300_ps192_lr0.0001_n32_i4/model/model_best.pt"
         args.pre_train = "/home/shizun/experiment/20220301_EDSR_decision_de3_x4_e300_ps192_lr0.0001_n32_i4/model/model_best.pt"
+        # args.pre_train = "/data/shizun/experiment/20220526_EDSR_decision_de3_x4_e300_ps192_lr0.0001_n32_i4/model/model_best.pt"
+
+        # args.pre_train = "/data/shizun/experiment/20220528_EDSR_decision_de3_x4_e300_ps192_lr0.0001_n32_i4_eedm2/model/model_best.pt"
+        # args.pre_train = "/data/shizun/experiment/20220528_EDSR_decision_de3_x4_e300_ps192_lr0.0001_n32_i4_eedm3/model/model_best.pt"
         
-        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_dynamic_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.exit_threshold)
+        args.save = "{}_{}_x{}_{}_e{}_ps{}_st{}_n{}_i{}_{}_rand_th{}_dynamic_test".format(today, args.model, args.scale, args.strategy, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.eedm, args.exit_threshold)
 
     elif args.template == 'EDSR_test':
         # model
@@ -368,12 +390,12 @@ def set_template(args):
         # args.data_test = 'TEST8K'  #############
         args.data_test = 'DIV2K'  #############
         if args.data_test == 'DIV2K':
-            args.data_range = '801-900'
+            args.data_range = '801-810'
         elif args.data_test == 'TEST8K':
             args.data_range = '1-100'
         args.ext = "sep"
-        args.patch_size = 48*int(args.scale)
-        args.step = 46*int(args.scale)
+        args.patch_size = 96*int(args.scale)
+        args.step = 94*int(args.scale)
 
         # device
         args.device = "0"  #############
@@ -383,18 +405,19 @@ def set_template(args):
         args.dynamic = True
         args.test_only = True     ############
         args.n_parallel = 400         ############
+        args.ssim = True
         # args.save_results = True  ############
         # args.save_gt = True       ############
 
         # experiment
         args.reset = True
-        # args.pre_train = "pretrained/EDSR_x2.pt"
+        args.pre_train = "pretrained/EDSR_x2.pt"
         # args.pre_train = "pretrained/EDSR_x3.pt"
         # args.pre_train = "pretrained/EDSR_x4.pt"
-        args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20210929_EDSR_paper_x2_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x3_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20211023_EDSR_paper_x4_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_static_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test)
+        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_static_test_801-810".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test)
 
     elif args.template == 'EDSR_ada':
         # model
@@ -469,6 +492,42 @@ def set_template(args):
         args.pre_train = "/home/shizun/experiment/20211112_EDSR_ada_x4_e300_ps192_lr5e-05_n32_l0.01_pretrain_new/model/model_best.pt"
         args.save = "{}_{}_x{}_n{}_{}_d{}_ada_test".format(today, args.model, args.scale, args.n_resblocks, args.data_test, args.ada_depth)
 
+    if args.template.find('EDSR_match') >= 0:
+        args.model = 'EDSR_dynamic'   ################
+        # args.model = 'EDSR'
+        args.lr = 1e-4
+        args.n_resblocks = 32
+        args.n_feats = 256
+        args.res_scale = 0.1
+        args.patch_size = 192
+        args.epochs = 300
+        args.dir_data = dir_data
+        args.data_train = 'DIV2K_DYNAMIC'
+        args.data_test = 'DIV2K_DYNAMIC'
+        args.scale = "2"   #############
+        args.device = "1"  #############
+        args.n_GPUs = 1
+        # args.data_range = '1-16/801-802'
+        args.batch_size = 16
+        args.print_every = 10
+        args.ext = "sep"
+        args.reset = True
+        args.match = True
+        args.shared_tail = True
+        args.exit_interval = 1    ############
+        args.test_only = True
+        args.bins = 96           ############
+        args.n_test_samples = 1  ############
+        args.bin_index = 80
+        args.save_results = True
+        args.save_gt = True
+        args.statistics_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X2/statistics_Canny_p192_s24.pt"
+        # args.statistics_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X3/statistics_Canny_p192_s24.pt"
+        # args.statistics_file = "/data/shizun/DIV2K/bin/DIV2K_train_LR_bicubic/X4/statistics_Canny_p192_s24.pt"
+        args.pre_train = "/home/shizun/experiment/20211021_EDSR_dynamic_x2_e300_ps192_lr0.0001_n32_i1_sTrue_sum_pretrain/model/model_best.pt"
+        args.save = "{}_{}_match_x{}_e{}_ps{}_lr{}_n{}_i{}_s{}_b{}_t{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval, args.shared_tail, args.bins, args.n_test_samples)
+
+
     elif args.template == 'RCAN':
         # model
         args.model = 'RCAN'
@@ -477,15 +536,17 @@ def set_template(args):
         args.n_feats = 64
 
         # data
-        args.scale = "2"
+        args.scale = "4"
         args.ext = "sep"
         args.dir_data = dir_data
         args.data_train = 'DIV2K'
-        args.data_test = 'DIV2K'
+        # args.data_test = 'DIV2K'
+        # args.data_test = 'Urban100'
+        args.data_test = 'B100'
         args.patch_size = 192
 
         # device
-        args.device = "3"
+        args.device = "1"
         args.n_GPUs = 1
 
         # pipeline
@@ -506,14 +567,16 @@ def set_template(args):
         args.test_only = True
         # args.chop = True
         args.ssim = True
+        args.save_results = True  ############
+        args.save_gt = True      ############
         if args.data_test == 'DIV2K':
             args.data_range = '801-900'
         elif args.data_test == 'TEST8K':
             args.data_range = '1-100'
-        args.pre_train = "/data/shizun/experiment/20220223_RCAN_my_x2_e300_ps192_lr0.0001/model/model_best.pt"
+        # args.pre_train = "/data/shizun/experiment/20220223_RCAN_my_x2_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/data/shizun/experiment/20220224_RCAN_my_x3_e300_ps192_lr0.0001/model/model_best.pt"
-        # args.pre_train = "/data/shizun/experiment/20220222_RCAN_my_x4_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_x{}_{}_test".format(today, args.model, args.scale, args.data_test)
+        args.pre_train = "/data/shizun/experiment/20220222_RCAN_my_x4_e300_ps192_lr0.0001/model/model_best.pt"
+        args.save = "{}_{}_x{}_{}_test_pic".format(today, args.model, args.scale, args.data_test)
 
 
     elif args.template == 'RCAN_multi':
@@ -600,14 +663,14 @@ def set_template(args):
         args.n_feats = 64
 
         # data
-        args.scale = "3"   #############
+        args.scale = "4"   #############
         args.dir_data = dir_data
         args.ext = "sep"
         # args.data_range = '1-16/801-802'
         args.patch_size = 192
 
         # device
-        args.device = "2"  #############
+        args.device = "0"  #############
         args.n_GPUs = 1
 
         # pipeline
@@ -624,8 +687,8 @@ def set_template(args):
         # experiemnt
         args.reset = True
         # args.pre_train = "/home/shizun/experiment/20220223_RCAN_my_x2_e300_ps192_lr0.0001/model/model_best.pt"
-        args.pre_train = "/home/shizun/experiment/20220224_RCAN_my_x3_e300_ps192_lr0.0001/model/model_best.pt"
-        # args.pre_train = "/home/shizun/experiment/20220222_RCAN_my_x4_e300_ps192_lr0.0001/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20220224_RCAN_my_x3_e300_ps192_lr0.0001/model/model_best.pt"
+        args.pre_train = "/home/shizun/experiment/20220222_RCAN_my_x4_e300_ps192_lr0.0001/model/model_best.pt"
         args.save = "{}_{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}".format(today, args.model, args.strategy, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval)
 
     elif args.template == 'RCAN_dytest':
@@ -636,10 +699,12 @@ def set_template(args):
         args.n_feats = 64
 
         # data
-        # args.scale = "4"   #############
+        args.scale = "4"   #############
         args.dir_data = dir_data
         # args.data_test = 'TEST8K'  #############
         # args.data_test = 'DIV2K'  #############
+        args.data_test = 'Urban100'  #############
+        # args.data_test = 'B100'  #############
         if args.data_test == 'DIV2K':
             args.data_range = '801-900'
         elif args.data_test == 'TEST8K':
@@ -649,16 +714,16 @@ def set_template(args):
         args.step = 46*int(args.scale)
 
         # device
-        # args.device = "0"  #############
+        args.device = "3"  #############
         args.n_GPUs = 1
 
         # pipeline
         args.dynamic = True
         args.test_only = True     ############
         args.ssim = True
-        # args.exit_interval = 1    ############
-        # args.exit_threshold = 0.99 ############
-        # args.n_parallel = 500
+        args.exit_interval = 1    ############
+        args.exit_threshold = 0.87 ############
+        args.n_parallel = 500
 
         # experiment
         args.reset = True
@@ -666,7 +731,7 @@ def set_template(args):
         # args.save_gt = True     ############
         # args.pre_train = "/home/shizun/experiment/20220301_RCAN_decision_de3_x2_e300_ps192_lr0.0001_n20_i1/model/model_best.pt"
         # args.pre_train = "/home/shizun/experiment/20220301_RCAN_decision_de3_x3_e300_ps192_lr0.0001_n20_i1/model/model_best.pt"
-        # args.pre_train = "/home/shizun/experiment/20220301_RCAN_decision_de3_x4_e300_ps192_lr0.0001_n20_i1/model/model_best.pt"
+        args.pre_train = "/home/shizun/experiment/20220301_RCAN_decision_de3_x4_e300_ps192_lr0.0001_n20_i1/model/model_best.pt"
         args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_dynamic_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.exit_threshold)
 
     elif args.template == 'RCAN_test':
@@ -809,6 +874,8 @@ def set_template(args):
         args.test_only = True
         # args.chop = True
         args.ssim = True
+        args.save_results = True  ############
+        args.save_gt = True      ############
         if args.data_test == 'DIV2K':
             args.data_range = '801-900'
         elif args.data_test == 'TEST8K':
@@ -816,7 +883,7 @@ def set_template(args):
         # args.pre_train = "/data/shizun/experiment/20220223_VDSR_my_x2_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/data/shizun/experiment/20220223_VDSR_my_x3_e300_ps192_lr0.0001/model/model_best.pt"
         args.pre_train = "/data/shizun/experiment/20220222_VDSR_my_x4_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_x{}_{}_test".format(today, args.model, args.scale, args.data_test)
+        args.save = "{}_{}_x{}_{}_test_pic".format(today, args.model, args.scale, args.data_test)
 
 
     elif args.template == 'VDSR_multi':
@@ -954,10 +1021,10 @@ def set_template(args):
         args.n_feats = 64
 
         # data
-        # args.scale = "4"   #############
+        args.scale = "4"   #############
         args.dir_data = dir_data
         # args.data_test = 'TEST8K'  #############
-        # args.data_test = 'DIV2K'  #############
+        args.data_test = 'DIV2K'  #############
         if args.data_test == 'DIV2K':
             args.data_range = '801-900'
         elif args.data_test == 'TEST8K':
@@ -967,18 +1034,18 @@ def set_template(args):
         args.step = 46*int(args.scale)
 
         # device
-        # args.device = "0"  #############
+        args.device = "1"  #############
         args.n_GPUs = 1
 
         # pipeline
         args.dynamic = True
         args.test_only = True     ############
         args.ssim = True
-        # args.exit_interval = 2    ############
-        # args.exit_threshold = 0.99 ############
-        # args.n_parallel = 500         ############
-        # args.save_results = True  ############
-        # args.save_gt = True     ############
+        args.exit_interval = 2    ############
+        args.exit_threshold = 1 ############
+        args.n_parallel = 500         ############
+        args.save_results = True  ############
+        args.save_gt = True     ############
         # args.add_mask = True
 
         # experiment
@@ -988,8 +1055,8 @@ def set_template(args):
         # args.pre_train = "/data/shizun/experiment/20220228_VDSR_decision_de3_x4_e300_ps192_lr0.0001_n20_i1/model/model_best.pt"
         # args.pre_train = "/data/shizun/experiment/20220301_VDSR_decision_de3_x2_e300_ps192_lr0.0001_n20_i2/model/model_best.pt"
         # args.pre_train = "/data/shizun/experiment/20220228_VDSR_decision_de3_x3_e300_ps192_lr0.0001_n20_i2/model/model_best.pt"
-        # args.pre_train = "/data/shizun/experiment/20220228_VDSR_decision_de3_x4_e300_ps192_lr0.0001_n20_i2/model/model_best.pt"
-        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_dynamic_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.exit_threshold)
+        args.pre_train = "/data/shizun/experiment/20220228_VDSR_decision_de3_x4_e300_ps192_lr0.0001_n20_i2/model/model_best.pt"
+        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_dynamic_test_pic".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.exit_threshold)
 
     elif args.template == 'SRVC':
         args.model = 'SRVC'
@@ -1134,7 +1201,7 @@ def set_template(args):
         args.patch_size = 192
 
         # device
-        args.device = "0"
+        args.device = "1"
         args.n_GPUs = 1
 
         # pipeline
@@ -1155,8 +1222,8 @@ def set_template(args):
         args.test_only = True
         # args.chop = True
         args.ssim = True
-        # args.save_results = True  ############
-        # args.save_gt = True      ############
+        args.save_results = True  ############
+        args.save_gt = True      ############
         if args.data_test == 'DIV2K':
             args.data_range = '801-900'
         elif args.data_test == 'TEST8K':
@@ -1168,7 +1235,7 @@ def set_template(args):
         # args.pre_train = "/data/shizun/experiment/20220228_ECBSR_my_x2_e300_ps192_lr0.0001/model/model_best.pt"
         # args.pre_train = "/data/shizun/experiment/20220228_ECBSR_my_x3_e300_ps192_lr0.0001/model/model_best.pt"
         args.pre_train = "/data/shizun/experiment/20220228_ECBSR_my_x4_e300_ps192_lr0.0001/model/model_best.pt"
-        args.save = "{}_{}_x{}_{}_test".format(today, args.model, args.scale, args.data_test)
+        args.save = "{}_{}_x{}_{}_test_pic".format(today, args.model, args.scale, args.data_test)
 
     elif args.template == 'ECBSR_multi':
         # model
@@ -1293,10 +1360,10 @@ def set_template(args):
         args.act = 'prelu'
 
         # data
-        # args.scale = "4"   #############
+        args.scale = "4"   #############
         args.dir_data = dir_data
         # args.data_test = 'TEST8K'  #############
-        # args.data_test = 'DIV2K'  #############
+        args.data_test = 'DIV2K'  #############
         if args.data_test == 'DIV2K':
             args.data_range = '801-900'
         elif args.data_test == 'TEST8K':
@@ -1306,26 +1373,26 @@ def set_template(args):
         args.step = 46*int(args.scale)
 
         # device
-        # args.device = "3"  #############
+        args.device = "1"  #############
         args.n_GPUs = 1
 
         # pipeline
         args.dynamic = True
         args.test_only = True     ############
         args.ssim = True
-        # args.exit_interval = 1    ############
-        # args.exit_threshold = 0.95 ############
-        # args.n_parallel = 500         ############
-        # args.save_results = True  ############
-        # args.save_gt = True     ############
+        args.exit_interval = 1    ############
+        args.exit_threshold = 1 ############
+        args.n_parallel = 500         ############
+        args.save_results = True  ############
+        args.save_gt = True     ############
         # args.add_mask = True
 
         # experiment
         args.reset = True
         # args.pre_train = "/data/shizun/experiment/20220228_ECBSR_decision_de3_x2_e300_ps192_lr0.0001_n16_i1/model/model_best.pt"
         # args.pre_train = "/data/shizun/experiment/20220228_ECBSR_decision_de3_x3_e300_ps192_lr0.0001_n16_i1/model/model_best.pt"
-        # args.pre_train = "/data/shizun/experiment/20220228_ECBSR_decision_de3_x4_e300_ps192_lr0.0001_n16_i1/model/model_best.pt"
-        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_dynamic_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.exit_threshold)
+        args.pre_train = "/data/shizun/experiment/20220228_ECBSR_decision_de3_x4_e300_ps192_lr0.0001_n16_i1/model/model_best.pt"
+        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_dynamic_test_pic".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test, args.exit_threshold)
 
     elif args.template == 'EDSR_demo':
         # model
@@ -1353,3 +1420,410 @@ def set_template(args):
         args.pre_train = "pretrained/EDSR_x2.pt"
         # args.pre_train = "pretrained/EDSR_x3.pt"
         # args.pre_train = "pretrained/EDSR_x4.pt"
+
+    if args.template == 'ESPCN':
+        # model
+        args.model = 'ESPCN'   ################
+        
+        # data
+        args.scale = "2"   #############
+        args.dir_data = dir_data
+        args.ext = "sep"
+        # args.data_range = '801-810/801-810'
+        args.patch_size = 192
+
+        # device
+        args.device = "0"  #############
+        args.n_GPUs = 1
+
+        # pipeline
+        args.epochs = 300
+        args.lr = 1e-4
+        args.batch_size = 16
+        args.print_every = 10
+
+        # experiemnt
+        # args.reset = True
+        # args.pre_train = "/home/shizun/experiment/20220321_ESPCN_x2_e300_ps192_lr0.0001/model/model_best.pt"
+        # args.save = "{}_{}_x{}_e{}_ps{}_lr{}".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
+        # args.save = "{}_{}_x{}_e{}_ps{}_lr{}_overfit_wo_pretrain".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr)
+
+        # test
+        args.data_test = 'DIV2K'  #############
+        if args.data_test == 'DIV2K':
+            # args.data_range = '801-900'
+            args.data_range = '801-810'
+        elif args.data_test == 'TEST8K':
+            args.data_range = '1-100'
+        args.test_only = True
+        # args.chop = True
+        args.ssim = True
+        # args.save_results = True  ############
+        # args.save_gt = True      ############
+        args.pre_train = "/home/shizun/experiment/20220322_ESPCN_x2_e300_ps192_lr0.0001_overfit_w_pretrain/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20220322_ESPCN_x2_e300_ps192_lr0.0001_overfit_wo_pretrain/model/model_best.pt"
+        args.save = "{}_{}_x{}_{}_overfit_w_pretrain_test_801-810".format(today, args.model, args.scale, args.data_test)
+
+        # resume
+        # args.load = "20211103_EDSR_paper_x4_e600_ps192_lr0.0001"
+        # args.resume = -1
+
+
+    elif args.template == 'ESPCN_test':
+        # model
+        args.model = 'ESPCN'
+
+        # data
+        args.scale = "2"   #############
+        args.dir_data = dir_data
+        # args.data_test = 'TEST8K'  #############
+        args.data_test = 'DIV2K'  #############
+        if args.data_test == 'DIV2K':
+            args.data_range = '801-810'
+        elif args.data_test == 'TEST8K':
+            args.data_range = '1-100'
+        args.ext = "sep"
+        args.patch_size = 96*int(args.scale)
+        args.step = 94*int(args.scale)
+
+        # device
+        args.device = "0"  #############
+        args.n_GPUs = 1
+
+        # pipeline
+        args.dynamic = True
+        args.test_only = True     ############
+        args.n_parallel = 400         ############
+        args.ssim = True
+        # args.save_results = True  ############
+        # args.save_gt = True       ############
+
+        # experiment
+        args.reset = True
+        args.pre_train = "/home/shizun/experiment/20220321_ESPCN_x2_e300_ps192_lr0.0001/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20220322_ESPCN_x2_e300_ps192_lr0.0001_overfit_w_pretrain/model/model_best.pt"
+        # args.pre_train = "/home/shizun/experiment/20220322_ESPCN_x2_e300_ps192_lr0.0001_overfit_wo_pretrain/model/model_best.pt"
+        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_static_test_801-810".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resgroups, args.exit_interval, args.data_test)
+
+
+    elif args.template == 'RRDB':
+        # model
+        args.model = 'RRDB'
+        args.n_resblocks = 23
+
+        # data
+        args.scale = "4"
+        args.ext = "sep"
+        args.dir_data = dir_data
+        args.data_train = 'DIV2K'
+        args.data_test = 'DIV2K'
+        # args.data_test = 'TEST8K'
+        args.patch_size = 192
+
+        # device
+        args.device = "2"
+        args.n_GPUs = 1
+
+        # pipeline
+        args.epochs = 300
+        args.batch_size = 16
+        args.print_every = 10
+
+        # experiment
+        # args.reset = True
+        # args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_my_data".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks)
+
+        # resume
+        # args.reset = False
+        # args.load = "/home/shizun/experiment/20211108_RCAN_paper_x2_e600_ps192_lr0.0001/"
+        # args.resume = -1
+
+        # test
+        args.test_only = True
+        # args.chop = True
+        args.ssim = True
+        # args.save_results = True  ############
+        # args.save_gt = True      ############
+        if args.data_test == 'DIV2K':
+            args.data_range = '801-900'
+        elif args.data_test == 'TEST8K':
+            args.data_range = '1-100'
+        # args.pre_train = "/data/shizun/experiment/20220525_RRDB_x4_e300_ps192_lr0.0001_my_data/model/model_best.pt"
+        args.pre_train = "/data/shizun/experiment/20220525_RRDB_x4_e300_ps192_lr0.0001_ori_data/model/model_best.pt"
+        args.save = "{}_{}_n23_ori_data_x{}_{}_test".format(today, args.model, args.scale, args.data_test)
+
+    elif args.template == 'RRDB_decision':
+        # model
+        args.model = 'RRDB_decision'
+        args.n_resblocks = 20
+
+        # data
+        args.scale = "4"   #############
+        args.dir_data = dir_data
+        args.ext = "sep"
+        # args.data_range = '1-16/801-802'
+        args.patch_size = 192
+
+        # device
+        args.device = "0"  #############
+        args.n_GPUs = 1
+
+        # pipeline
+        args.epochs = 300
+        args.lr = 1e-4
+        args.decay = "200-400"
+        args.batch_size = 16
+        args.print_every = 10
+        args.decision = True
+        args.strategy = "de4"
+        args.exit_interval = 4    ############
+        # args.save_results = True  ############
+        # args.save_gt = True      ############
+
+        # experiemnt
+        args.reset = True
+        args.pre_train = "/data/shizun/experiment/20220525_RRDB_x4_e300_ps192_lr0.0001_n20_my_data/model/model_best.pt"
+        args.save = "{}_{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}".format(today, args.model, args.strategy, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval)
+        
+        # resume
+        # args.reset = False
+        # # args.load = "/data/shizun/experiment/20220526_RRDB_decision_de3_x4_e500_ps192_lr0.0001_n20_i4/"
+        # args.load = "/data/shizun/experiment/20220527_RRDB_decision_de3_x4_e500_ps192_lr0.0001_n20_i2/"
+        # args.resume = -1
+
+    elif args.template == 'RRDB_dytest':
+        # model
+        args.model = 'RRDB_decision'
+        args.n_resblocks = 20
+
+        # data
+        args.scale = "4"   #############
+        args.dir_data = dir_data
+        # args.data_test = 'TEST8K'  #############
+        args.data_test = 'DIV2K'  #############
+        if args.data_test == 'DIV2K':
+            args.data_range = '801-900'
+        elif args.data_test == 'TEST8K':
+            args.data_range = '1-100'
+        args.ext = "sep"
+        args.patch_size = 48*int(args.scale)
+        args.step = 46*int(args.scale)
+
+        # device
+        args.device = "1"  #############
+        args.n_GPUs = 1
+
+        # pipeline
+        args.epochs = 300
+        args.dynamic = True
+        args.test_only = True     ############
+        args.ssim = True
+        args.exit_interval = 4    ############
+        args.exit_threshold = 1.0 ############
+        args.n_parallel = 500
+
+        # experiment
+        args.reset = True
+        # args.save_results = True  ############
+        # args.save_gt = True     ############
+        # args.pre_train = "/data/shizun/experiment/20220525_RRDB_decision_de3_x4_e300_ps192_lr0.0001_n20_i4/model/model_best.pt"
+        # args.pre_train = "/data/shizun/experiment/20220526_RRDB_decision_de3_x4_e500_ps192_lr0.0001_n20_i4/model/model_best.pt"
+        # args.pre_train = "/data/shizun/experiment/20220526_RRDB_decision_de3_x4_e300_ps192_lr0.0001_n20_i2/model/model_best.pt"
+        args.pre_train = "/data/shizun/experiment/20220527_RRDB_decision_eedm_x4_e300_ps192_lr0.0001_n20_i4/model/model_best.pt"
+        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_dynamic_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resblocks, args.exit_interval, args.data_test, args.exit_threshold)
+
+    elif args.template == 'RRDB_check':
+        # model
+        args.model = 'RRDB_check'
+        args.n_resblocks = 20
+
+        # data
+        args.scale = "4"   #############
+        args.dir_data = dir_data
+        # args.data_test = 'TEST8K'  #############
+        args.data_test = 'DIV2K'  #############
+        if args.data_test == 'DIV2K':
+            args.data_range = '801-900'
+        elif args.data_test == 'TEST8K':
+            args.data_range = '1-100'
+        args.ext = "sep"
+        args.patch_size = 48*int(args.scale)
+        args.step = 46*int(args.scale)
+
+        # device
+        args.device = "2"  #############
+        args.n_GPUs = 1
+
+        # pipeline
+        args.check = True
+        args.test_only = True     ############
+        args.exit_interval = 4    ############
+        args.exit_threshold = 1 ############
+        args.n_parallel = 500         ############
+        # args.save_results = True  ############
+        # args.save_gt = True     ############
+        # args.add_mask = True
+
+        # experiment
+        args.reset = True
+        args.pre_train = "/data/shizun/experiment/20220525_RRDB_decision_de3_x4_e300_ps192_lr0.0001_n20_i4/model/model_best.pt"
+        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_check".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resblocks, args.exit_interval, args.data_test, args.exit_threshold)
+
+    elif args.template == 'RRDB_eedm':
+        # model
+        args.model = 'RRDB_decision'   ################
+        args.n_resblocks = 20
+
+        
+        # data
+        args.scale = "4"   #############
+        args.dir_data = dir_data
+        args.ext = "sep"
+        # args.data_range = '1-16/801-802'
+        args.patch_size = 192
+
+        # device
+        args.device = "1"  #############
+        args.n_GPUs = 1
+
+        # pipeline
+        args.epochs = 300
+        args.loss = '1*MSE'
+        args.lr = 1e-4
+        args.batch_size = 16
+        args.print_every = 10
+        args.decision = True
+        args.strategy = "eedm1"
+        args.exit_interval = 4    ############
+        # args.save_results = True  ############
+        # args.save_gt = True      ############
+
+        # experiemnt
+        args.reset = True
+        args.pre_train = "/data/shizun/experiment/20220525_RRDB_decision_de3_x4_e300_ps192_lr0.0001_n20_i4/model/model_best.pt"
+        args.save = "{}_{}_{}_x{}_e{}_ps{}_lr{}_n{}_i{}".format(today, args.model, args.strategy, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks, args.exit_interval)
+
+
+    elif args.template == 'SWINIR':
+        # model
+        args.model = 'SWINIR'
+        args.n_resblocks = 6
+
+        # data
+        args.scale = "4"
+        args.ext = "sep"
+        args.dir_data = dir_data
+        args.data_train = 'DIV2K'
+        args.data_test = 'DIV2K'
+        # args.data_test = 'TEST8K'
+        args.patch_size = 192
+
+        # device
+        args.device = "2"
+        args.n_GPUs = 1
+
+        # pipeline
+        args.epochs = 500
+        args.lr = 1e-4
+        args.decay = "200-400"
+        args.batch_size = 16
+        args.print_every = 10
+
+        # experiment
+        # args.reset = True
+        # args.save = "{}_{}_x{}_e{}_ps{}_lr{}_n{}_my_data".format(today, args.model, args.scale, args.epochs, args.patch_size, args.lr, args.n_resblocks)
+
+        # resume
+        # args.reset = False
+        # args.load = "/home/shizun/experiment/20220528_SWINIR_x4_e500_ps192_lr0.0001_n6_my_data/"
+        # args.resume = -1
+
+        # test
+        args.test_only = True
+        # args.chop = True
+        args.ssim = True
+        # args.save_results = True  ############
+        # args.save_gt = True      ############
+        if args.data_test == 'DIV2K':
+            args.data_range = '801-900'
+        elif args.data_test == 'TEST8K':
+            args.data_range = '1-100'
+        # args.pre_train = "/data/shizun/experiment/20220526_SWINIR_x4_e300_ps192_lr0.0001_n6_my_data/model/model_best.pt"
+        args.pre_train = "/data/shizun/experiment/20220528_SWINIR_x4_e500_ps192_lr0.0001_n6_my_data/model/model_best.pt"
+        args.save = "{}_{}_ori_data_x{}_{}_e500_test".format(today, args.model, args.scale, args.data_test)
+
+
+    elif args.template == 'SWINIR_decision':
+        # model
+        args.model = 'SWINIR_decision'
+
+        # data
+        args.scale = "4"   #############
+        args.dir_data = dir_data
+        args.ext = "sep"
+        # args.data_range = '1-16/801-802'
+        args.patch_size = 192
+
+        # device
+        args.device = "3"  #############
+        args.n_GPUs = 1
+
+        # pipeline
+        args.epochs = 300
+        args.lr = 1e-4
+        args.decay = "200-400"
+        args.batch_size = 16
+        args.print_every = 10
+        args.decision = True
+        args.strategy = "de3"
+        args.exit_interval = 1    ############
+        # args.save_results = True  ############
+        # args.save_gt = True      ############
+
+        # experiemnt
+        # args.reset = True
+        # args.pre_train = "/data/shizun/experiment/20220526_SWINIR_x4_e300_ps192_lr0.0001_n6_my_data/model/model_best.pt"
+        # args.save = "{}_{}_{}_x{}_e{}_ps{}_lr{}_n6_i{}".format(today, args.model, args.strategy, args.scale, args.epochs, args.patch_size, args.lr, args.exit_interval)
+        
+        # resume
+        args.reset = False
+        args.load = "/data/shizun/experiment/20220527_SWINIR_decision_de3_x4_e300_ps192_lr0.0001_n6_i1/"
+        args.resume = -1
+
+
+    elif args.template == 'SWINIR_dytest':
+        # model
+        args.model = 'SWINIR_decision'
+
+        # data
+        args.scale = "4"   #############
+        args.dir_data = dir_data
+        # args.data_test = 'TEST8K'  #############
+        args.data_test = 'DIV2K'  #############
+        if args.data_test == 'DIV2K':
+            args.data_range = '801-900'
+        elif args.data_test == 'TEST8K':
+            args.data_range = '1-100'
+        args.ext = "sep"
+        args.patch_size = 48*int(args.scale)
+        args.step = 46*int(args.scale)
+
+        # device
+        args.device = "3"  #############
+        args.n_GPUs = 1
+
+        # pipeline
+        args.epochs = 300
+        args.dynamic = True
+        args.test_only = True     ############
+        args.ssim = True
+        args.exit_interval = 1    ############
+        args.exit_threshold = 0.8 ############
+        args.n_parallel = 500
+
+        # experiment
+        args.reset = True
+        # args.save_results = True  ############
+        # args.save_gt = True     ############
+        args.pre_train = "/data/shizun/experiment/20220527_SWINIR_decision_de3_x4_e300_ps192_lr0.0001_n6_i1/model/model_best.pt"
+        args.save = "{}_{}_x{}_e{}_ps{}_st{}_n{}_i{}_{}_th{}_dynamic_test".format(today, args.model, args.scale, args.epochs, args.patch_size, args.step, args.n_resblocks, args.exit_interval, args.data_test, args.exit_threshold)

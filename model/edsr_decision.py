@@ -42,12 +42,29 @@ class EDSR(nn.Module):
         ]
 
         # define early-exiting decision-maker
-        m_eedm = [
-            nn.AdaptiveAvgPool2d(1),
-            nn.Flatten(),
-            nn.Linear(n_feats,1),
-            nn.Tanh()
-        ]
+        if args.eedm == 1:
+            m_eedm = [
+                nn.AdaptiveAvgPool2d(1),
+                nn.Flatten(),
+                nn.Linear(n_feats,1),
+                nn.Tanh()
+            ]
+        elif args.eedm == 2:
+            m_eedm = [
+                nn.AdaptiveAvgPool2d(1),
+                nn.Flatten(),
+                nn.Linear(n_feats,n_feats),
+                nn.Linear(n_feats,1),
+                nn.Tanh()
+            ]
+        elif args.eedm == 3:
+            m_eedm = [
+                nn.Conv2d(n_feats,n_feats,(3,3),2,1),
+                nn.AdaptiveAvgPool2d(1),
+                nn.Flatten(),
+                nn.Linear(n_feats,1),
+                nn.Tanh()
+            ]
         
         self.head = nn.Sequential(*m_head)
         self.body = nn.Sequential(*m_body)
